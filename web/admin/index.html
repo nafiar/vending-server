@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Admin Vending</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/admin.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <div id="login-view" class="login-view" hidden>
+    <form class="login-card" id="login-form" novalidate>
+      <div class="brand brand-lg"><span class="brand-mark" aria-hidden="true"></span><span>Panel Admin Vending</span></div>
+      <p class="login-sub">Masuk dengan akun admin untuk melihat rekap pendapatan dan mengelola mesin.</p>
+      <label class="label" for="login-username">Username</label>
+      <input class="input" id="login-username" name="username" autocomplete="username" required>
+      <label class="label" for="login-password">Password</label>
+      <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" required>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <button class="btn btn-primary btn-block" type="submit" id="login-submit">Masuk</button>
+      <p class="login-demo" id="login-demo" hidden>Demo: <b>admin</b> / <b>admin123</b></p>
+    </form>
+  </div>
+
+  <div id="app-view" class="app" hidden>
+    <aside class="nav" aria-label="Menu utama">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Panel Admin Vending</span></div>
+      <nav class="nav-links" id="nav-links">
+        <a href="#recap" data-route="recap">Rekap pendapatan</a>
+        <a href="#transactions" data-route="transactions">Transaksi</a>
+        <a href="#restock" data-route="restock">Riwayat restock</a>
+        <a href="#products" data-route="products">Produk</a>
+        <a href="#machines" data-route="machines">Mesin &amp; slot</a>
+        <a href="#operators" data-route="operators">Operator</a>
+        <a href="#changelog" data-route="changelog">Log perubahan</a>
+      </nav>
+      <div class="nav-foot">
+        <span class="nav-user" id="nav-user"></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="logout">Keluar</button>
+      </div>
+    </aside>
+    <main class="main" id="main">
+      <div class="demo-banner" id="demo-banner" hidden>Mode demo: data contoh dari 3 mesin, tidak tersimpan ke server.</div>
+      <div id="view" class="view"></div>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div class="chart-tip" id="chart-tip" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
