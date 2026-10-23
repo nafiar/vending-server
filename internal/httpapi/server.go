@@ -21,15 +21,23 @@ import (
 
 // Server routes requests to the service.
 type Server struct {
-	svc *core.Service
-	log *slog.Logger
-	mux *http.ServeMux
-	web fs.FS
+	svc  *core.Service
+	log  *slog.Logger
+	mux  *http.ServeMux
+	web  fs.FS
+	opts Options
+}
+
+// Options are optional features.
+type Options struct {
+	// DemoReset, when set, enables POST /api/admin/demo/reset: delete every row and
+	// load the demo data again. Only for demo servers (DEMO_MODE=true).
+	DemoReset func(ctx context.Context) error
 }
 
 // New returns the HTTP handler. web holds the admin web files (index.html at its root).
-func New(svc *core.Service, web fs.FS, log *slog.Logger) http.Handler {
-	s := &Server{svc: svc, log: log, mux: http.NewServeMux(), web: web}
+func New(svc *core.Service, web fs.FS, log *slog.Logger, opts Options) http.Handler {
+	s := &Server{svc: svc, log: log, mux: http.NewServeMux(), web: web, opts: opts}
 	s.routes()
 	return s.withMiddleware(http.HandlerFunc(s.dispatch))
 }
@@ -65,6 +73,7 @@ func (s *Server) routes() {
 	m.Handle("POST /api/admin/operators/{id}/reset-password", s.admin(s.resetOperatorPassword))
 	m.Handle("GET /api/admin/audit-logs", s.admin(s.auditLogs))
 	m.Handle("GET /api/admin/reconcile", s.admin(s.reconcile))
+	m.Handle("POST /api/admin/demo/reset", s.admin(s.demoReset))
 
 	// Kiosk Agent (UC-01 to UC-05). The agent forwards the kiosk's calls here, adding the machine key.
 	m.Handle("GET /api/machine/catalog", s.machineOnly(s.catalog))

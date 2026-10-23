@@ -24,6 +24,7 @@ import (
 	"vending/internal/database"
 	"vending/internal/httpapi"
 	"vending/internal/security"
+	"vending/internal/seed"
 )
 
 // The integration tests run the real HTTP handlers against a real MySQL. Each
@@ -96,7 +97,9 @@ func newEnv(t *testing.T) *env {
 	clock := &fakeClock{t: t0}
 	svc := core.New(db, core.Options{Location: jakarta, UploadDir: t.TempDir(), Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
-	srv := httptest.NewServer(httpapi.New(svc, web, log))
+	srv := httptest.NewServer(httpapi.New(svc, web, log, httpapi.Options{
+		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
+	}))
 	t.Cleanup(srv.Close)
 
 	e := &env{t: t, srv: srv, svc: svc, clock: clock}

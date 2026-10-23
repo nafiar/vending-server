@@ -22,7 +22,7 @@ import (
 // Result is what the seed created, for the command to print.
 type Result struct {
 	Users        []string          // "username / password"
-	MachineKeys  map[string]string // machine code -> key
+	MachineKeys  map[string]string // machine code -> key; empty when a reset kept the machine's old key
 	Transactions int
 	Visits       int
 }
@@ -49,6 +49,7 @@ type machine struct {
 	version     int64
 	slots       []*slot
 	apiKey      string
+	keyHash     string
 	lastVisitAt time.Time
 }
 
@@ -102,10 +103,26 @@ type auditRow struct {
 var popularity = map[int64]float64{1: 0.7, 2: 0.9, 3: 1.2, 4: 1.4, 5: 1.8, 6: 1.0, 7: 0.8, 8: 1.3, 9: 0.6}
 var saleHours = []int{7, 8, 9, 9, 10, 11, 12, 12, 12, 13, 13, 14, 15, 15, 16, 17, 17, 18, 19}
 
-// Demo fills an empty database. With reset it first deletes every row.
+// Demo fills an empty database. With reset it first deletes every row, but
+// keeps the keys of machines that come back with the same code (VM-01 to
+// VM-03), so a kiosk already set up with its key keeps working after a reset.
 func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
 	db := svc.DB()
+	keptKeys := map[string]string{}
 	if reset {
+		rows, err := db.QueryContext(ctx, `SELECT code, api_key_hash FROM machines`)
+		if err != nil {
+			return Result{}, err
+		}
+		for rows.Next() {
+			var code, hash string
+			if err := rows.Scan(&code, &hash); err != nil {
+				rows.Close()
+				return Result{}, err
+			}
+			keptKeys[code] = hash
+		}
+		rows.Close()
 		if err := wipe(ctx, db); err != nil {
 			return Result{}, err
 		}
@@ -168,7 +185,12 @@ func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
 		m.created = at(m.createdAgo, 8, 0)
 		m.lastSeen = now.Add(-m.seenAgo)
 		m.version = 1
-		m.apiKey = security.NewToken("vmk_")
+		if hash, ok := keptKeys[m.code]; ok {
+			m.keyHash = hash
+		} else {
+			m.apiKey = security.NewToken("vmk_")
+			m.keyHash = security.HashToken(m.apiKey)
+		}
 		for i, pid := range m.layout {
 			slotID++
 			m.slots = append(m.slots, &slot{id: slotID, number: i + 1, product: pid, capacity: 10})
@@ -386,7 +408,7 @@ func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
 	}
 	for _, m := range machines {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO machines (id, code, name, location, api_key_hash, catalog_version, is_active, last_seen_at, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`, m.id, m.code, m.name, m.location, security.HashToken(m.apiKey), m.version, m.lastSeen, m.created); err != nil {
+			VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`, m.id, m.code, m.name, m.location, m.keyHash, m.version, m.lastSeen, m.created); err != nil {
 			return Result{}, err
 		}
 		res.MachineKeys[m.code] = m.apiKey

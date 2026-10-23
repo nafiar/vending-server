@@ -329,6 +329,37 @@ func TestSeedDemo(t *testing.T) {
 	e.mustOK(e.asMachine(res.MachineKeys["VM-01"], "GET", "/api/machine/catalog", nil), nil)
 }
 
+// A demo reset from the admin web keeps the machine keys, so a configured kiosk keeps working.
+func TestDemoReset(t *testing.T) {
+	e := newEnv(t)
+	res, err := seed.Demo(t.Context(), e.svc, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := res.MachineKeys["VM-01"]
+	var login core.LoginResult
+	e.mustOK(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin123"}, nil), &login)
+	e.admin = login.Token
+
+	r := e.asAdmin("GET", "/api/admin/me", nil)
+	if r.json()["demoMode"] != true {
+		t.Fatalf("me must report demo mode: %s", r.body)
+	}
+	e.mustOK(e.asAdmin("POST", "/api/admin/products", map[string]any{"name": "Barang Uji", "price": 1000}), nil)
+	e.mustOK(e.asAdmin("POST", "/api/admin/demo/reset", nil), nil)
+	e.expect(e.asAdmin("GET", "/api/admin/me", nil), http.StatusUnauthorized, "UNAUTHORIZED") // every session ended
+	e.mustOK(e.asMachine(key, "GET", "/api/machine/catalog", nil), nil)                       // the key survived
+	e.mustOK(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin123"}, nil), &login)
+	e.admin = login.Token
+	var list []core.ProductView
+	e.mustOK(e.asAdmin("GET", "/api/admin/products?includeArchived=1", nil), &list)
+	for _, p := range list {
+		if p.Name == "Barang Uji" {
+			t.Fatal("the reset must remove what was added")
+		}
+	}
+}
+
 // Unknown API paths answer JSON, the health check reports the database, and the admin web is served.
 func TestRoutingBasics(t *testing.T) {
 	e := newEnv(t)

@@ -1,17 +1,19 @@
 # Vending server (Go + MySQL)
 
-The server of the vending machine information system in PRD v3. One binary:
+The server of the vending machine information system in <https://claude.ai/artifact/8AmhGkq8GZBeBVNPALQyVe#08b44a7f-9024>. One binary:
 
 - serves the **admin web** (the same HTML/CSS/JS pages, now on the real API) at `/`;
 - provides the **admin API** the admin web calls, at `/api/admin/...`;
 - provides the **machine API** the Kiosk Agent on each machine calls, at `/api/machine/...`;
-- stores everything in **MySQL**, and applies its own schema on start-up.
+- stores everything in **MySQL 8.0+ or MariaDB 10.6+**, and applies its own schema on start-up.
+
+To put it on the GCP VM with HTTPS, see **[DEPLOY.md](DEPLOY.md)**: one command from your laptop.
 
 Only standard-library HTTP and `database/sql`, plus two dependencies: the MySQL driver and `golang.org/x/crypto` (Argon2id).
 
 ## Run it on your computer
 
-You need **Go 1.24 or newer** and a running **MySQL 8.0 or newer**.
+You need **Go 1.24 or newer** and a running **MySQL 8.0+ or MariaDB 10.6+**.
 
 1. **Point it at MySQL.** Copy the example settings and fill in your MySQL user:
 
@@ -53,6 +55,7 @@ To get a binary instead: `go build -o bin/vending-server ./cmd/vending-server` (
 | `vending-server migrate` | Create the database if needed and apply pending migrations, then exit |
 | `vending-server create-admin` | Add an admin: `-username`, `-name`, `-password` (optional). `-reset` sets a new password on an existing account |
 | `vending-server seed-demo` | Load demo data into an empty database. `-reset` deletes every row first |
+| `vending-server reset` | Delete every row and load the demo data again. The machine keys of VM-01 to VM-03 stay the same, so a configured kiosk keeps working |
 | `vending-server rotate-key -machine VM-01` | Print a new machine key; the old one stops working |
 | `vending-server reconcile` | Check every slot: count at the last visit, minus DISPENSED sales since, must equal the count now (NFR-05) |
 
@@ -73,6 +76,7 @@ Read from environment variables, or from `.env` in the working directory. A real
 | `OPERATOR_SESSION_IDLE` | `2m` | Operator mode idle logout (BR-13) |
 | `PAYMENT_WINDOW` | `60s` | How long a PENDING transaction can be paid (BR-06) |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text`, `info` | `json` for log collectors; `debug` also logs static files |
+| `DEMO_MODE` | `false` | `true` shows **Reset data demo** in the admin web (`POST /api/admin/demo/reset`). For demo servers only |
 
 ## Try the machine API with curl
 
@@ -123,6 +127,7 @@ The request and response shapes are the contract in the admin web's README, whic
 | `POST /operators/{id}/activate` · `/deactivate` · `/reset-password` | Reset returns a one-time `temporaryPassword` |
 | `GET /audit-logs?from=&to=&entityType=` | The change log |
 | `GET /reconcile` | The same check as the `reconcile` command |
+| `POST /demo/reset` | Only with `DEMO_MODE=true`: delete every row and load the demo data again |
 
 ### Machine API: `/api/machine`, with `X-Machine-Key: <machine key>`
 
@@ -205,6 +210,7 @@ internal/httpapi/        routes, middleware, JSON errors, and the integration te
 internal/security/       Argon2id passwords, tokens, UUIDs
 internal/seed/           demo data, simulated event by event so it reconciles
 web/admin/               the admin web, embedded into the binary
+deploy/                  deploy.sh (run on your laptop) and setup-vm.sh (run on the VM); see DEPLOY.md
 ```
 
 ## Differences from the PRD data dictionary
