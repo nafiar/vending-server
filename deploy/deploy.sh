@@ -8,13 +8,14 @@
 #   ./deploy/deploy.sh <ssh-target> status                    is everything running?
 #   ./deploy/deploy.sh <ssh-target> logs                      follow the server log (Ctrl+C to stop)
 #
+# If MySQL's root uses a password: DB_ROOT_PASSWORD='...' ./deploy/deploy.sh <ssh-target> install
 # <ssh-target> is what you type after "ssh", e.g. nafiar@35.219.98.32 or a ~/.ssh/config alias.
 # Needs Go and ssh on this computer; the VM needs nothing but sudo.
 # Works with the bash that ships with macOS.
 set -euo pipefail
 
 usage() {
-	sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
 	exit 1
 }
 
@@ -27,6 +28,13 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SSH_OPTS=(-o ConnectTimeout=15)
 
 remote() { ssh "${SSH_OPTS[@]}" -t "$TARGET" "$@"; }
+
+# DB_ROOT_PASSWORD (and DB_ROOT_USER) on this computer are passed to the VM, for a
+# MySQL whose root logs in with a password instead of the Unix socket.
+ENV_PASS=""
+if [ -n "${DB_ROOT_PASSWORD:-}" ]; then
+	ENV_PASS="DB_ROOT_PASSWORD=$(printf %q "$DB_ROOT_PASSWORD") DB_ROOT_USER=$(printf %q "${DB_ROOT_USER:-root}")"
+fi
 
 build_and_copy() {
 	command -v go >/dev/null || {
@@ -60,15 +68,15 @@ build_and_copy() {
 case $CMD in
 install)
 	build_and_copy
-	remote "sudo bash /tmp/setup-vm.sh install $*"
+	remote "sudo $ENV_PASS bash /tmp/setup-vm.sh install $*"
 	;;
 update)
 	build_and_copy
-	remote "sudo bash /tmp/setup-vm.sh update"
+	remote "sudo $ENV_PASS bash /tmp/setup-vm.sh update"
 	;;
 reset | keys | status | logs)
 	scp "${SSH_OPTS[@]}" -q "$ROOT/deploy/setup-vm.sh" "$TARGET:/tmp/"
-	remote "sudo bash /tmp/setup-vm.sh $CMD"
+	remote "sudo $ENV_PASS bash /tmp/setup-vm.sh $CMD"
 	;;
 *) usage ;;
 esac
