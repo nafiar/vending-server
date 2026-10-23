@@ -33,6 +33,8 @@ type Config struct {
 
 	LogFormat string // LOG_FORMAT: text (default) or json
 	LogLevel  string // LOG_LEVEL: debug, info (default), warn, error
+
+	DemoMode bool // DEMO_MODE: shows "Reset data demo" in the admin web; never on a real deployment
 }
 
 // DBConfig describes how to reach MySQL. DB_DSN wins over the separate fields.
@@ -72,6 +74,9 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("TIMEZONE %q: %w", tz, err)
 	}
 	if c.AutoMigrate, err = boolEnv("AUTO_MIGRATE", true); err != nil {
+		return c, err
+	}
+	if c.DemoMode, err = boolEnv("DEMO_MODE", false); err != nil {
 		return c, err
 	}
 	if c.AdminIdle, err = durationEnv("ADMIN_SESSION_IDLE", 30*time.Minute); err != nil {

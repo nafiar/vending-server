@@ -28,7 +28,23 @@ func (s *Server) adminLogout(w http.ResponseWriter, r *http.Request) (any, error
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
-	return s.svc.Me(p), nil
+	return struct {
+		core.Me
+		DemoMode bool `json:"demoMode"`
+	}{s.svc.Me(p), s.opts.DemoReset != nil}, nil
+}
+
+// demoReset wipes the database and loads the demo data again. Every session
+// ends with it, so the admin web goes back to the login screen.
+func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+	if s.opts.DemoReset == nil {
+		return nil, &core.Error{Status: http.StatusNotFound, Code: "NOT_FOUND", Message: "Reset hanya tersedia di server demo (DEMO_MODE=true)."}
+	}
+	s.log.Warn("demo data reset from the admin web", "by", p.Username)
+	if err := s.opts.DemoReset(r.Context()); err != nil {
+		return nil, err
+	}
+	return map[string]bool{"ok": true}, nil
 }
 
 func (s *Server) summary(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {

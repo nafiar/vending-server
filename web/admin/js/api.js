@@ -93,7 +93,8 @@
     createOperator: function (b) { return http('POST', '/admin/operators', b); },
     setOperatorActive: function (id, active) { return http('POST', '/admin/operators/' + id + (active ? '/activate' : '/deactivate'), {}); },
     resetOperatorPassword: function (id) { return http('POST', '/admin/operators/' + id + '/reset-password', {}); },
-    getAuditLogs: function (p) { return http('GET', '/admin/audit-logs' + qs(p)); }
+    getAuditLogs: function (p) { return http('GET', '/admin/audit-logs' + qs(p)); },
+    resetDemo: function () { return http('POST', '/admin/demo/reset', {}); }
   };
 
   /* ================================================================ mock data */

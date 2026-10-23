@@ -266,7 +266,11 @@
   }
 
   async function enterApp(user) {
+    if (user.demoMode === undefined && !api.isMock) {
+      try { user = Object.assign({}, user, await api.me()); } catch (_) { /* keep what the login returned */ }
+    }
     state.user = user;
+    $('#demo-reset').hidden = !user.demoMode;
     $('#login-view').hidden = true;
     $('#app-view').hidden = false;
     $('#nav-user').textContent = user.name;
@@ -302,6 +306,17 @@
     }
   });
   $('#logout').addEventListener('click', function () { logout(); });
+  $('#demo-reset').addEventListener('click', function () {
+    confirmModal({
+      title: 'Reset semua data demo?', confirmLabel: 'Reset data', danger: true,
+      text: 'Semua transaksi, restock, produk, mesin dan akun dihapus lalu diisi ulang dengan data contoh. Kunci mesin VM-01 sampai VM-03 tetap sama. Anda akan keluar dan masuk lagi dengan admin / admin123.',
+      onConfirm: async function () {
+        await api.resetDemo();
+        clearTimeout(idleTimer);
+        setTimeout(function () { showLogin('Data demo sudah direset. Masuk dengan admin / admin123.'); }, 50);
+      }
+    });
+  });
 
   function go(r) {
     if (('#' + r) !== location.hash) {

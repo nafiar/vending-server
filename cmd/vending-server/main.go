@@ -53,6 +53,7 @@ Commands:
   migrate        create the database if needed and apply the schema
   create-admin   add an admin account: -username admin -name "Nama" [-password ...] [-reset]
   seed-demo      load demo data into an empty database [-reset deletes every row first]
+  reset          delete every row and load the demo data again; machine keys stay the same
   rotate-key     print a new key for a machine: -machine VM-01
   reconcile      check every slot's count against its visits and sales
   version        print the version
@@ -77,6 +78,8 @@ func run(args []string) error {
 		return createAdmin(args)
 	case "seed-demo":
 		return seedDemo(args)
+	case "reset":
+		return seedDemo(append([]string{"-reset"}, args...))
 	case "rotate-key":
 		return rotateKey(args)
 	case "reconcile":
@@ -186,9 +189,17 @@ func serve(args []string) error {
 	}
 	go a.svc.RunJobs(ctx)
 
+	var opts httpapi.Options
+	if a.cfg.DemoMode {
+		opts.DemoReset = func(ctx context.Context) error {
+			_, err := seed.Demo(ctx, a.svc, true)
+			return err
+		}
+		a.log.Warn("DEMO_MODE is on: any admin can reset all data from the admin web")
+	}
 	srv := &http.Server{
 		Addr:              a.cfg.HTTPAddr,
-		Handler:           httpapi.New(a.svc, web.Admin(), a.log),
+		Handler:           httpapi.New(a.svc, web.Admin(), a.log, opts),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -319,14 +330,18 @@ func seedDemo(args []string) error {
 	for _, u := range res.Users {
 		fmt.Println("  " + u)
 	}
-	fmt.Println("\nMachine keys (shown once; only their hashes are stored):")
+	fmt.Println("\nMachine keys (only their hashes are stored, so a new key is shown once):")
 	codes := make([]string, 0, len(res.MachineKeys))
 	for c := range res.MachineKeys {
 		codes = append(codes, c)
 	}
 	sort.Strings(codes)
 	for _, c := range codes {
-		fmt.Printf("  %s  %s\n", c, res.MachineKeys[c])
+		key := res.MachineKeys[c]
+		if key == "" {
+			key = "(unchanged: the kiosk keeps the key it already has)"
+		}
+		fmt.Printf("  %s  %s\n", c, key)
 	}
 	return nil
 }
