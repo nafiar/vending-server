@@ -60,6 +60,24 @@ install_base_packages() {
 	info "curl, ca-certificates, gnupg and openssl are installed"
 }
 
+# db runs SQL as the database's admin. Without DB_ROOT_PASSWORD it uses socket
+# login (the default for root on Ubuntu MySQL and Debian MariaDB); with it, the
+# password goes in a temporary option file so it never shows in the process list.
+DB_ADMIN_CNF=""
+db() {
+	if [[ -n ${DB_ROOT_PASSWORD:-} && -z $DB_ADMIN_CNF ]]; then
+		DB_ADMIN_CNF=$(mktemp)
+		chmod 600 "$DB_ADMIN_CNF"
+		printf '[client]\nuser=%s\npassword="%s"\n' "${DB_ROOT_USER:-root}" "$DB_ROOT_PASSWORD" >"$DB_ADMIN_CNF"
+		trap 'rm -f "$DB_ADMIN_CNF"' EXIT
+	fi
+	if [[ -n $DB_ADMIN_CNF ]]; then
+		mysql --defaults-extra-file="$DB_ADMIN_CNF" "$@"
+	else
+		mysql "$@"
+	fi
+}
+
 # Ubuntu ships MySQL 8.0; Debian (GCP's default image) ships MariaDB. The server works on both.
 install_database() {
 	step "Database"
@@ -75,11 +93,18 @@ install_database() {
 	fi
 	systemctl enable --now mariadb >/dev/null 2>&1 || systemctl enable --now mysql >/dev/null 2>&1 || true
 	for _ in $(seq 1 30); do
-		mysql -e 'SELECT 1' >/dev/null 2>&1 && break
+		db -e 'SELECT 1' >/dev/null 2>&1 && break
 		sleep 1
 	done
-	mysql -e 'SELECT 1' >/dev/null 2>&1 || die "the database server is not answering; see: journalctl -u mysql -u mariadb -n 50"
-	info "$(mysql -N -e 'SELECT VERSION()') is running and listens only on this VM"
+	if ! db -e 'SELECT 1' >/dev/null 2>&1; then
+		if [[ -z ${DB_ROOT_PASSWORD:-} ]] && db -e 'SELECT 1' 2>&1 | grep -q 'Access denied'; then
+			die "the database's root account needs a password. Run again with it:
+       DB_ROOT_PASSWORD='your-root-password' ./deploy/deploy.sh <target> install"
+		fi
+		db -e 'SELECT 1' 2>&1 | tail -1 >&2 || true
+		die "cannot log in to the database as ${DB_ROOT_USER:-root}; see the error above, or: journalctl -u mysql -u mariadb -n 50"
+	fi
+	info "$(db -N -e 'SELECT VERSION()') is running; logged in as ${DB_ROOT_USER:-root}"
 }
 
 # The app's own database user, with rights on its database only. The password is
@@ -92,7 +117,7 @@ setup_database_user() {
 	else
 		pass=$(openssl rand -hex 16) # hex only: safe in SQL and in the settings file
 	fi
-	mysql <<SQL
+	db <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$pass';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$pass';
@@ -185,7 +210,7 @@ EOF
 seed_first_time() {
 	step "Demo data"
 	local users
-	users=$(mysql -N "$DB_NAME" -e 'SELECT COUNT(*) FROM users' 2>/dev/null || echo 0)
+	users=$(db -N "$DB_NAME" -e 'SELECT COUNT(*) FROM users' 2>/dev/null || echo 0)
 	if [[ $users -gt 0 ]]; then
 		info "the database already has accounts; left as it is (use 'reset' to start over)"
 		return
