@@ -1,5 +1,5 @@
 # The API contract, as field-path shapes. Written by TestAPIContract.
-# Regenerate after an intended change: go test ./internal/httpapi -run TestAPIContract -update
+# Regenerate after an intended change: go test ./test/api -run TestAPIContract -update
 
 GET /api/health -> 200
   database: string

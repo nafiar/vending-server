@@ -1,4 +1,4 @@
-package httpapi_test
+package api_test
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 	"vending/internal/common/config"
 	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/httpapi"
+	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 )
@@ -103,7 +103,7 @@ func newEnv(t *testing.T) *env {
 	deps := app.Wire(db, cfg, log, clock.Now)
 	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
-	srv := httptest.NewServer(httpapi.New(svc, deps.UseCases(), web, log, httpapi.Options{
+	srv := httptest.NewServer(deliveryhttp.New(svc, deps.UseCases(), web, log, deliveryhttp.Options{
 		UploadDir: uploads,
 		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
 	}))

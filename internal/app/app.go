@@ -18,7 +18,7 @@ import (
 
 	"vending/internal/common/clock"
 	"vending/internal/common/config"
-	"vending/internal/httpapi"
+	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/repository/imagestore"
 	imagestorelocal "vending/internal/repository/imagestore/local"
 	"vending/internal/repository/machine"
@@ -68,6 +68,6 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 }
 
 // UseCases is what the delivery layer depends on.
-func (d Deps) UseCases() httpapi.UseCases {
-	return httpapi.UseCases{Catalog: d.Catalog, Purchase: d.Purchase}
+func (d Deps) UseCases() deliveryhttp.UseCases {
+	return deliveryhttp.UseCases{Catalog: d.Catalog, Purchase: d.Purchase}
 }

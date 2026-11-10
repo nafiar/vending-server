@@ -27,7 +27,7 @@ test-db:
 # Rewrite the API contract golden file after an intended contract change.
 # Review the diff before committing it: it is what the admin web and the kiosk depend on.
 contract:
-	VENDING_TEST_DSN='$(VENDING_TEST_DSN)' go test ./internal/httpapi -run TestAPIContract -update -count=1
+	VENDING_TEST_DSN='$(VENDING_TEST_DSN)' go test ./test/api -run TestAPIContract -update -count=1
 
 # Regenerate the port mocks (go.uber.org/mock).
 generate:

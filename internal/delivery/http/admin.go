@@ -1,4 +1,4 @@
-package httpapi
+package http
 
 import (
 	"net/http"
@@ -28,7 +28,7 @@ func (s *Server) adminLogout(w http.ResponseWriter, r *http.Request) (any, error
 	return map[string]bool{"ok": true}, s.svc.Logout(r.Context(), bearer(r))
 }
 
-func (s *Server) me(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) me(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	return struct {
 		core.Me
 		DemoMode bool `json:"demoMode"`
@@ -37,7 +37,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request, p core.Principal) (a
 
 // demoReset wipes the database and loads the demo data again. Every session
 // ends with it, so the admin web goes back to the login screen.
-func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	if s.opts.DemoReset == nil {
 		return nil, model.NotFound("Reset hanya tersedia di server demo (DEMO_MODE=true).")
 	}
@@ -48,7 +48,7 @@ func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p core.Princi
 	return map[string]bool{"ok": true}, nil
 }
 
-func (s *Server) summary(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) summary(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	machineID := q.int("machineId")
 	if err := q.err(); err != nil {
@@ -57,7 +57,7 @@ func (s *Server) summary(w http.ResponseWriter, r *http.Request, p core.Principa
 	return s.svc.GetSummary(r.Context(), machineID)
 }
 
-func (s *Server) recap(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) recap(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	in := core.RecapQuery{
 		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"),
@@ -69,7 +69,7 @@ func (s *Server) recap(w http.ResponseWriter, r *http.Request, p core.Principal)
 	return s.svc.GetRecap(r.Context(), in)
 }
 
-func (s *Server) transactions(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) transactions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	in := core.TransactionQuery{
 		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"), SlotNumber: int(q.int("slotNumber")),
@@ -81,7 +81,7 @@ func (s *Server) transactions(w http.ResponseWriter, r *http.Request, p core.Pri
 	return s.svc.ListTransactions(r.Context(), in)
 }
 
-func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	in := core.RestockQuery{
 		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"), UserID: q.int("userId"),
@@ -93,11 +93,11 @@ func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p core.
 	return s.svc.ListRestockSessions(r.Context(), in)
 }
 
-func (s *Server) products(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) products(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	return s.svc.ListProducts(r.Context(), newQuery(r).bool("includeArchived"))
 }
 
-func (s *Server) createProduct(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) createProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	var in core.ProductInput
 	if err := decode(w, r, &in, imageBodyLimit); err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *Server) createProduct(w http.ResponseWriter, r *http.Request, p core.Pr
 	return created{v}, err
 }
 
-func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request, p core.Pr
 	return s.svc.UpdateProduct(r.Context(), p, id, in)
 }
 
-func (s *Server) archiveProduct(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) archiveProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *Server) archiveProduct(w http.ResponseWriter, r *http.Request, p core.P
 	return s.svc.ArchiveProduct(r.Context(), p, id)
 }
 
-func (s *Server) restoreProduct(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) restoreProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (s *Server) restoreProduct(w http.ResponseWriter, r *http.Request, p core.P
 	return s.svc.RestoreProduct(r.Context(), p, id)
 }
 
-func (s *Server) machines(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) machines(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	list, err := s.svc.ListMachines(r.Context())
 	if list == nil {
 		list = []core.MachineView{}
@@ -142,7 +142,7 @@ func (s *Server) machines(w http.ResponseWriter, r *http.Request, p core.Princip
 	return list, err
 }
 
-func (s *Server) machine(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) machine(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func (s *Server) machine(w http.ResponseWriter, r *http.Request, p core.Principa
 	return s.svc.GetMachine(r.Context(), id)
 }
 
-func (s *Server) createMachine(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) createMachine(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	var in core.MachineInput
 	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func (s *Server) createMachine(w http.ResponseWriter, r *http.Request, p core.Pr
 }
 
 func (s *Server) setMachineActive(active bool) adminFunc {
-	return func(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+	return func(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 		id, err := pathID(r, "id")
 		if err != nil {
 			return nil, err
@@ -169,7 +169,7 @@ func (s *Server) setMachineActive(active bool) adminFunc {
 	}
 }
 
-func (s *Server) rotateMachineKey(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) rotateMachineKey(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (s *Server) rotateMachineKey(w http.ResponseWriter, r *http.Request, p core
 	return s.svc.RotateMachineKey(r.Context(), p, id)
 }
 
-func (s *Server) updateSlot(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) updateSlot(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (s *Server) updateSlot(w http.ResponseWriter, r *http.Request, p core.Princ
 	return s.svc.UpdateSlot(r.Context(), p, id, n, in)
 }
 
-func (s *Server) operators(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) operators(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	list, err := s.svc.ListOperators(r.Context())
 	if list == nil {
 		list = []core.OperatorView{}
@@ -201,7 +201,7 @@ func (s *Server) operators(w http.ResponseWriter, r *http.Request, p core.Princi
 	return list, err
 }
 
-func (s *Server) createOperator(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) createOperator(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	var in core.OperatorInput
 	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (s *Server) createOperator(w http.ResponseWriter, r *http.Request, p core.P
 }
 
 func (s *Server) setOperatorActive(active bool) adminFunc {
-	return func(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+	return func(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 		id, err := pathID(r, "id")
 		if err != nil {
 			return nil, err
@@ -220,7 +220,7 @@ func (s *Server) setOperatorActive(active bool) adminFunc {
 	}
 }
 
-func (s *Server) resetOperatorPassword(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) resetOperatorPassword(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return nil, err
@@ -229,12 +229,12 @@ func (s *Server) resetOperatorPassword(w http.ResponseWriter, r *http.Request, p
 	return map[string]string{"temporaryPassword": pw}, err
 }
 
-func (s *Server) auditLogs(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) auditLogs(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	return s.svc.ListAuditLogs(r.Context(), core.AuditQuery{From: q.str("from"), To: q.str("to"), EntityType: q.str("entityType")})
 }
 
-func (s *Server) reconcile(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
+func (s *Server) reconcile(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	rows, err := s.svc.Reconcile(r.Context())
 	if err != nil {
 		return nil, err

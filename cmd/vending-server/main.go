@@ -33,7 +33,7 @@ import (
 	"vending/internal/common/logx"
 	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/httpapi"
+	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 	"vending/web"
@@ -178,7 +178,7 @@ func serve(args []string) error {
 	}
 	go a.svc.RunJobs(ctx)
 
-	opts := httpapi.Options{UploadDir: a.cfg.UploadDir}
+	opts := deliveryhttp.Options{UploadDir: a.cfg.UploadDir}
 	if a.cfg.DemoMode {
 		opts.DemoReset = func(ctx context.Context) error {
 			_, err := seed.Demo(ctx, a.svc, true)
@@ -188,7 +188,7 @@ func serve(args []string) error {
 	}
 	srv := &http.Server{
 		Addr:              a.cfg.HTTPAddr,
-		Handler:           httpapi.New(a.svc, a.deps.UseCases(), web.Admin(), a.log, opts),
+		Handler:           deliveryhttp.New(a.svc, a.deps.UseCases(), web.Admin(), a.log, opts),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,

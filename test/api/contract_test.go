@@ -1,4 +1,4 @@
-package httpapi_test
+package api_test
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ import (
 //
 // Regenerate after an intended contract change, and read the diff:
 //
-//	go test ./internal/httpapi -run TestAPIContract -update
+//	go test ./test/api -run TestAPIContract -update
 var update = flag.Bool("update", false, "rewrite testdata/contract.golden")
 
 // pruned paths are recorded as their JSON kind without recursing, because their
@@ -307,7 +307,7 @@ func TestAPIContract(t *testing.T) {
 	// ---------------------------------------------------------------- compare
 
 	got := "# The API contract, as field-path shapes. Written by TestAPIContract.\n" +
-		"# Regenerate after an intended change: go test ./internal/httpapi -run TestAPIContract -update\n\n" +
+		"# Regenerate after an intended change: go test ./test/api -run TestAPIContract -update\n\n" +
 		strings.Join(blocks, "\n")
 
 	golden := filepath.Join("testdata", "contract.golden")
@@ -323,7 +323,7 @@ func TestAPIContract(t *testing.T) {
 	}
 	want, err := os.ReadFile(golden)
 	if err != nil {
-		t.Fatalf("%v\nrun: go test ./internal/httpapi -run TestAPIContract -update", err)
+		t.Fatalf("%v\nrun: go test ./test/api -run TestAPIContract -update", err)
 	}
 	if string(want) != got {
 		t.Errorf("the API contract changed:\n%s", diff(string(want), got))
