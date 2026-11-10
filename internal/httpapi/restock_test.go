@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/security"
 )
 
 // TC-13: one visit saves one session with a line per slot, sets the counts and

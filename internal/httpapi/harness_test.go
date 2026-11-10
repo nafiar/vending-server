@@ -19,11 +19,11 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"vending/internal/config"
+	"vending/internal/common/config"
+	"vending/internal/common/security"
 	"vending/internal/core"
 	"vending/internal/database"
 	"vending/internal/httpapi"
-	"vending/internal/security"
 	"vending/internal/seed"
 )
 

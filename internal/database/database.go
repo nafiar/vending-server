@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"vending/internal/config"
+	"vending/internal/common/config"
 )
 
 //go:embed migrations/*.sql

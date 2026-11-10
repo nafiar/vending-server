@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"vending/internal/common/security"
 	"vending/internal/model"
-	"vending/internal/security"
 )
 
 const (

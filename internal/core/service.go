@@ -15,6 +15,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"vending/internal/common/clock"
 )
 
 // Options configure a Service.
@@ -36,7 +38,7 @@ type Service struct {
 	adminIdle     time.Duration
 	operatorIdle  time.Duration
 	paymentWindow time.Duration
-	clock         func() time.Time
+	clock         clock.Clock
 	log           *slog.Logger
 }
 
@@ -49,7 +51,7 @@ func New(db *sql.DB, o Options) *Service {
 		adminIdle:     o.AdminIdle,
 		operatorIdle:  o.OperatorIdle,
 		paymentWindow: o.PaymentWindow,
-		clock:         o.Now,
+		clock:         clock.New(o.Now),
 		log:           o.Logger,
 	}
 	if s.loc == nil {
@@ -67,9 +69,6 @@ func New(db *sql.DB, o Options) *Service {
 	if s.paymentWindow <= 0 {
 		s.paymentWindow = 60 * time.Second
 	}
-	if s.clock == nil {
-		s.clock = time.Now
-	}
 	if s.log == nil {
 		s.log = slog.Default()
 	}
@@ -86,7 +85,7 @@ func (s *Service) Location() *time.Location { return s.loc }
 func (s *Service) UploadDir() string { return s.uploadDir }
 
 // now is the current time in UTC, cut to the milliseconds DATETIME(3) stores.
-func (s *Service) now() time.Time { return s.clock().UTC().Truncate(time.Millisecond) }
+func (s *Service) now() time.Time { return s.clock.Now() }
 
 // Now is the service's clock, for tools that write data relative to it (the demo seed).
 func (s *Service) Now() time.Time { return s.now() }

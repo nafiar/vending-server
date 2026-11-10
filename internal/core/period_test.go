@@ -1,7 +1,6 @@
 package core
 
 import (
-	"strings"
 	"testing"
 	"time"
 )
@@ -72,22 +71,5 @@ func TestChangedFields(t *testing.T) {
 	}
 	if _, _, changed := changedFields(map[string]any{"x": nil}, map[string]any{"x": nil}); changed {
 		t.Fatal("nil to nil is no change")
-	}
-}
-
-func TestDecodeImage(t *testing.T) {
-	if _, _, msg := decodeImage("data:image/gif;base64,R0lGODlh"); msg == "" {
-		t.Fatal("gif must be refused")
-	}
-	// A JPEG header inside a PNG data URL is judged by content and refused as unreadable.
-	if _, _, msg := decodeImage("data:image/png;base64,/9j/4AAQ"); msg == "" {
-		t.Fatal("a truncated image must be refused")
-	}
-	// Initials come from letters and digits only, so markup in a name never reaches the SVG.
-	if svg := string(placeholderSVG("Gacha <script>", 3)); !strings.Contains(svg, ">G</text>") || strings.Contains(svg, "<script") {
-		t.Fatalf("placeholder: %s", svg)
-	}
-	if svg := string(placeholderSVG("gacha ultra rare", 1)); !strings.Contains(svg, ">GU</text>") {
-		t.Fatalf("two initials: %s", svg)
 	}
 }

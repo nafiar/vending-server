@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/security"
 	"vending/internal/seed"
 )
 

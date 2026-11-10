@@ -28,11 +28,12 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"vending/internal/config"
+	"vending/internal/common/config"
+	"vending/internal/common/logx"
+	"vending/internal/common/security"
 	"vending/internal/core"
 	"vending/internal/database"
 	"vending/internal/httpapi"
-	"vending/internal/security"
 	"vending/internal/seed"
 	"vending/web"
 )
@@ -110,7 +111,7 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
-	log := newLogger(cfg)
+	log := logx.New(cfg.LogFormat, cfg.LogLevel)
 	var ensureErr error
 	if cfg.AutoMigrate || forceMigrate {
 		// Needs the CREATE privilege; a database created beforehand by a DBA works too.
@@ -138,23 +139,6 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 		Logger:        log,
 	})
 	return &app{cfg: cfg, log: log, db: db, svc: svc}, nil
-}
-
-func newLogger(cfg config.Config) *slog.Logger {
-	level := slog.LevelInfo
-	switch cfg.LogLevel {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	}
-	opts := &slog.HandlerOptions{Level: level}
-	if cfg.LogFormat == "json" {
-		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
-	}
-	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
 
 // ---------------------------------------------------------------- serve
@@ -244,7 +228,7 @@ func migrateCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	log := newLogger(cfg)
+	log := logx.New(cfg.LogFormat, cfg.LogLevel)
 	ensureErr := database.EnsureDatabase(ctx, cfg.DB)
 	db, err := database.Open(ctx, cfg.DB)
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/security"
 )
 
 // TC-01: a whole purchase turns one coil, ends DISPENSED, lowers the count and

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"vending/internal/common/imagex"
 )
 
 // queryer is what *sql.DB and *sql.Tx have in common.
@@ -71,7 +73,7 @@ func readImageField(v *string, current string, fe fieldErrors) imageChange {
 	if *v == current && current != "" {
 		return imageChange{keep: true}
 	}
-	data, ext, msg := decodeImage(*v)
+	data, ext, msg := imagex.Decode(*v)
 	if msg != "" {
 		fe.Add("image", msg)
 		return imageChange{}
@@ -200,7 +202,7 @@ func (s *Service) CreateProduct(ctx context.Context, actor Principal, in Product
 	if img.data != nil {
 		url, err = s.storeImage(img.data, img.ext)
 	} else {
-		url, err = s.storeImage(placeholderSVG(c.name, utf8.RuneCountInString(c.name)), ".svg")
+		url, err = s.storeImage(imagex.Placeholder(c.name, utf8.RuneCountInString(c.name)), ".svg")
 	}
 	if err != nil {
 		return ProductView{}, err

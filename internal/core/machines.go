@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"vending/internal/security"
+	"vending/internal/common/security"
 )
 
 // MachineInput is the body of POST /admin/machines.

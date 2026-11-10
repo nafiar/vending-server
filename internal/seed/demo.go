@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/security"
 )
 
 // Result is what the seed created, for the command to print.

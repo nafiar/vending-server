@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"vending/internal/security"
+	"vending/internal/common/security"
 )
 
 // OperatorInput is the body of POST /admin/operators.
