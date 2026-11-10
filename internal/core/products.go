@@ -36,19 +36,19 @@ func (in ProductInput) validate(fe fieldErrors) cleanProduct {
 	c := cleanProduct{name: strings.TrimSpace(in.Name), description: strings.TrimSpace(in.Description)}
 	switch n := utf8.RuneCountInString(c.name); {
 	case n == 0:
-		fe.add("name", "Nama wajib diisi.")
+		fe.Add("name", "Nama wajib diisi.")
 	case n > 100:
-		fe.add("name", "Nama paling panjang 100 karakter.")
+		fe.Add("name", "Nama paling panjang 100 karakter.")
 	}
 	if utf8.RuneCountInString(c.description) > 1000 {
-		fe.add("description", "Deskripsi paling panjang 1000 karakter.")
+		fe.Add("description", "Deskripsi paling panjang 1000 karakter.")
 	}
 	price, err := strconv.ParseInt(in.Price.String(), 10, 64)
 	switch {
 	case err != nil || price <= 0:
-		fe.add("price", "Harga harus bilangan bulat lebih dari 0.")
+		fe.Add("price", "Harga harus bilangan bulat lebih dari 0.")
 	case price > maxPrice:
-		fe.add("price", "Harga paling besar Rp100.000.000.")
+		fe.Add("price", "Harga paling besar Rp100.000.000.")
 	}
 	c.price = price
 	return c
@@ -73,7 +73,7 @@ func readImageField(v *string, current string, fe fieldErrors) imageChange {
 	}
 	data, ext, msg := decodeImage(*v)
 	if msg != "" {
-		fe.add("image", msg)
+		fe.Add("image", msg)
 		return imageChange{}
 	}
 	return imageChange{data: data, ext: ext}
@@ -192,7 +192,7 @@ func (s *Service) CreateProduct(ctx context.Context, actor Principal, in Product
 	fe := fieldErrors{}
 	c := in.validate(fe)
 	img := readImageField(in.ImageURL, "", fe)
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return ProductView{}, err
 	}
 	var url string
@@ -244,7 +244,7 @@ func (s *Service) UpdateProduct(ctx context.Context, actor Principal, id int64, 
 	fe := fieldErrors{}
 	c := in.validate(fe)
 	img := readImageField(in.ImageURL, curImage, fe)
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return ProductView{}, err
 	}
 	newImage := curImage

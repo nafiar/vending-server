@@ -3,23 +3,14 @@ package core
 import (
 	"context"
 	"database/sql"
+
+	"vending/internal/model"
 )
 
 // SlotReconciliation compares a slot's count with its history (NFR-05):
 // the count set at the last visit minus the DISPENSED sales since then
 // should equal the count the system holds now.
-type SlotReconciliation struct {
-	MachineCode    string `json:"machineCode"`
-	SlotNumber     int    `json:"slotNumber"`
-	LastVisitID    int64  `json:"lastVisitId"`
-	LastVisitAt    int64  `json:"lastVisitAt"`
-	CountAtVisit   int    `json:"countAtVisit"`
-	SoldSince      int    `json:"soldSince"`
-	Expected       int    `json:"expected"`
-	Actual         int    `json:"actual"`
-	Matches        bool   `json:"matches"`
-	NeverRestocked bool   `json:"neverRestocked"`
-}
+type SlotReconciliation = model.SlotReconciliation
 
 // Reconcile checks every slot. Slots that were never restocked are listed with
 // NeverRestocked set and are expected to be at 0.

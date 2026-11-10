@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"vending/internal/core"
+	"vending/internal/model"
 )
 
 // Admin endpoints. The request and response shapes are the contract in
@@ -38,7 +39,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request, p core.Principal) (a
 // ends with it, so the admin web goes back to the login screen.
 func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p core.Principal) (any, error) {
 	if s.opts.DemoReset == nil {
-		return nil, &core.Error{Status: http.StatusNotFound, Code: "NOT_FOUND", Message: "Reset hanya tersedia di server demo (DEMO_MODE=true)."}
+		return nil, model.NotFound("Reset hanya tersedia di server demo (DEMO_MODE=true).")
 	}
 	s.log.Warn("demo data reset from the admin web", "by", p.Username)
 	if err := s.opts.DemoReset(r.Context()); err != nil {
@@ -183,7 +184,7 @@ func (s *Server) updateSlot(w http.ResponseWriter, r *http.Request, p core.Princ
 	}
 	n, err := strconv.Atoi(r.PathValue("n"))
 	if err != nil || n < 1 {
-		return nil, &core.Error{Status: http.StatusNotFound, Code: "NOT_FOUND", Message: "Slot tidak ditemukan."}
+		return nil, model.NotFound("Slot tidak ditemukan.")
 	}
 	var in core.SlotInput
 	if err := decode(w, r, &in, defaultBodyLimit); err != nil {

@@ -27,7 +27,7 @@ func (s *Service) parseRange(from, to string, defaultDays, maxDays int) (DateRan
 	if to != "" {
 		t, err := time.ParseInLocation(dayLayout, to, s.loc)
 		if err != nil {
-			fe.add("to", "Tanggal akhir harus berformat YYYY-MM-DD.")
+			fe.Add("to", "Tanggal akhir harus berformat YYYY-MM-DD.")
 		}
 		last = t
 	}
@@ -35,19 +35,19 @@ func (s *Service) parseRange(from, to string, defaultDays, maxDays int) (DateRan
 	if from != "" {
 		t, err := time.ParseInLocation(dayLayout, from, s.loc)
 		if err != nil {
-			fe.add("from", "Tanggal awal harus berformat YYYY-MM-DD.")
+			fe.Add("from", "Tanggal awal harus berformat YYYY-MM-DD.")
 		}
 		first = t
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return DateRange{}, err
 	}
 	if first.After(last) {
-		fe.add("from", "Tanggal awal harus sebelum atau sama dengan tanggal akhir.")
+		fe.Add("from", "Tanggal awal harus sebelum atau sama dengan tanggal akhir.")
 	} else if days := daysBetween(first, last) + 1; days > maxDays {
-		fe.add("from", "Rentang tanggal paling panjang "+strconv.Itoa(maxDays)+" hari.")
+		fe.Add("from", "Rentang tanggal paling panjang "+strconv.Itoa(maxDays)+" hari.")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return DateRange{}, err
 	}
 	end := last.AddDate(0, 0, 1)

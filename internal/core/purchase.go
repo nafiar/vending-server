@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"vending/internal/model"
 )
 
 // The purchase state machine (PRD, "Purchase sequence and transaction states"):
@@ -203,7 +204,7 @@ func (s *Service) CreateTransaction(ctx context.Context, m Machine, in CreateTra
 				return err
 			}
 			if !active {
-				return &Error{Status: http.StatusForbidden, Code: "MACHINE_INACTIVE", Message: "Mesin ini dinonaktifkan di panel admin."}
+				return model.MachineInactive("Mesin ini dinonaktifkan di panel admin.")
 			}
 			if current != version {
 				stale = true
@@ -319,7 +320,7 @@ func (s *Service) Pay(ctx context.Context, m Machine, id string) (TransactionSta
 		return TransactionState{}, err
 	}
 	if expired {
-		return TransactionState{}, newErr(http.StatusGone, "EXPIRED", "Waktu pembayaran habis.")
+		return TransactionState{}, model.Expired("Waktu pembayaran habis.")
 	}
 	return out, nil
 }

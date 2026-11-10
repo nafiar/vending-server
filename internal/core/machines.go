@@ -206,26 +206,26 @@ func (s *Service) CreateMachine(ctx context.Context, actor Principal, in Machine
 	name := strings.TrimSpace(in.Name)
 	location := strings.TrimSpace(in.Location)
 	if !machineCodePattern.MatchString(code) {
-		fe.add("code", "Kode 2–20 karakter: huruf, angka atau tanda hubung.")
+		fe.Add("code", "Kode 2–20 karakter: huruf, angka atau tanda hubung.")
 	}
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		fe.add("name", "Nama wajib diisi.")
+		fe.Add("name", "Nama wajib diisi.")
 	case n > 100:
-		fe.add("name", "Nama paling panjang 100 karakter.")
+		fe.Add("name", "Nama paling panjang 100 karakter.")
 	}
 	if utf8.RuneCountInString(location) > 150 {
-		fe.add("location", "Lokasi paling panjang 150 karakter.")
+		fe.Add("location", "Lokasi paling panjang 150 karakter.")
 	}
 	slotCount, ok := intField(in.SlotCount)
 	if !ok || slotCount < 1 || slotCount > 60 {
-		fe.add("slotCount", "Jumlah slot 1 sampai 60.")
+		fe.Add("slotCount", "Jumlah slot 1 sampai 60.")
 	}
 	capacity, ok := intField(in.Capacity)
 	if !ok || capacity < 1 || capacity > 30 {
-		fe.add("capacity", "Kapasitas 1 sampai 30.")
+		fe.Add("capacity", "Kapasitas 1 sampai 30.")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return MachineWithKey{}, err
 	}
 
@@ -238,14 +238,14 @@ func (s *Service) CreateMachine(ctx context.Context, actor Principal, in Machine
 			return err
 		}
 		if exists > 0 {
-			return fieldErrors{"code": "Kode " + code + " sudah dipakai."}.err()
+			return fieldErrors{"code": "Kode " + code + " sudah dipakai."}.Err()
 		}
 		res, err := tx.ExecContext(ctx, `
 			INSERT INTO machines (code, name, location, api_key_hash, catalog_version, is_active, created_at)
 			VALUES (?, ?, ?, ?, 1, TRUE, ?)`, code, name, strOrNil(location), security.HashToken(key), s.now())
 		if err != nil {
 			if isMySQLError(err, mysqlDuplicateKey) {
-				return fieldErrors{"code": "Kode " + code + " sudah dipakai."}.err()
+				return fieldErrors{"code": "Kode " + code + " sudah dipakai."}.Err()
 			}
 			return err
 		}
@@ -374,9 +374,9 @@ func (s *Service) UpdateSlot(ctx context.Context, actor Principal, machineID int
 		newCap, ok := intField(in.Capacity)
 		switch {
 		case !ok || newCap < 1 || newCap > 30:
-			fe.add("capacity", "Kapasitas 1 sampai 30.")
+			fe.Add("capacity", "Kapasitas 1 sampai 30.")
 		case int(newCap) < qty:
-			fe.add("capacity", "Tidak boleh di bawah isi saat ini ("+strconv.Itoa(qty)+").")
+			fe.Add("capacity", "Tidak boleh di bawah isi saat ini ("+strconv.Itoa(qty)+").")
 		}
 		var newNext sql.NullInt64
 		var newNextName string
@@ -392,14 +392,14 @@ func (s *Service) UpdateSlot(ctx context.Context, actor Principal, machineID int
 			}
 			switch {
 			case !ok || !active:
-				fe.add("nextProductId", "Pilih produk yang aktif.")
+				fe.Add("nextProductId", "Pilih produk yang aktif.")
 			case cur.Valid && cur.Int64 == pid:
 				// planning the product the coil already holds means no change
 			default:
 				newNext = sql.NullInt64{Int64: pid, Valid: true}
 			}
 		}
-		if err := fe.err(); err != nil {
+		if err := fe.Err(); err != nil {
 			return err
 		}
 		if !newNext.Valid {

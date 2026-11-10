@@ -95,20 +95,20 @@ func (s *Service) CreateOperator(ctx context.Context, actor Principal, in Operat
 	username := strings.ToLower(strings.TrimSpace(in.Username))
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		fe.add("name", "Nama wajib diisi.")
+		fe.Add("name", "Nama wajib diisi.")
 	case n > 100:
-		fe.add("name", "Nama paling panjang 100 karakter.")
+		fe.Add("name", "Nama paling panjang 100 karakter.")
 	}
 	if !usernamePattern.MatchString(username) {
-		fe.add("username", "3–32 karakter: huruf kecil, angka, titik atau garis bawah.")
+		fe.Add("username", "3–32 karakter: huruf kecil, angka, titik atau garis bawah.")
 	}
 	switch n := utf8.RuneCountInString(in.Password); {
 	case n < 6:
-		fe.add("password", "Paling sedikit 6 karakter.")
+		fe.Add("password", "Paling sedikit 6 karakter.")
 	case n > 128:
-		fe.add("password", "Paling panjang 128 karakter.")
+		fe.Add("password", "Paling panjang 128 karakter.")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return nil, err
 	}
 	hash, err := security.HashPassword(in.Password)
@@ -122,13 +122,13 @@ func (s *Service) CreateOperator(ctx context.Context, actor Principal, in Operat
 			return err
 		}
 		if exists > 0 {
-			return fieldErrors{"username": "Username sudah dipakai."}.err()
+			return fieldErrors{"username": "Username sudah dipakai."}.Err()
 		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO users (name, username, password_hash, role, is_active, created_at) VALUES (?, ?, ?, 'OPERATOR', TRUE, ?)`,
 			name, username, hash, s.now())
 		if err != nil {
 			if isMySQLError(err, mysqlDuplicateKey) {
-				return fieldErrors{"username": "Username sudah dipakai."}.err()
+				return fieldErrors{"username": "Username sudah dipakai."}.Err()
 			}
 			return err
 		}
@@ -221,15 +221,15 @@ func (s *Service) CreateAdmin(ctx context.Context, name, username, password stri
 	name = strings.TrimSpace(name)
 	username = strings.ToLower(strings.TrimSpace(username))
 	if name == "" || utf8.RuneCountInString(name) > 100 {
-		fe.add("name", "name is required (at most 100 characters)")
+		fe.Add("name", "name is required (at most 100 characters)")
 	}
 	if !usernamePattern.MatchString(username) {
-		fe.add("username", "3-32 characters: lowercase letters, digits, dot or underscore")
+		fe.Add("username", "3-32 characters: lowercase letters, digits, dot or underscore")
 	}
 	if n := utf8.RuneCountInString(password); n < 8 || n > 128 {
-		fe.add("password", "8 to 128 characters")
+		fe.Add("password", "8 to 128 characters")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return 0, err
 	}
 	hash, err := security.HashPassword(password)
@@ -239,7 +239,7 @@ func (s *Service) CreateAdmin(ctx context.Context, name, username, password stri
 	res, err := s.db.ExecContext(ctx, `INSERT INTO users (name, username, password_hash, role, is_active, created_at) VALUES (?, ?, ?, 'ADMIN', TRUE, ?)`,
 		name, username, hash, s.now())
 	if isMySQLError(err, mysqlDuplicateKey) {
-		return 0, fieldErrors{"username": "username " + username + " already exists"}.err()
+		return 0, fieldErrors{"username": "username " + username + " already exists"}.Err()
 	}
 	if err != nil {
 		return 0, err
@@ -251,7 +251,7 @@ func (s *Service) CreateAdmin(ctx context.Context, name, username, password stri
 // to reset an admin who forgot theirs.
 func (s *Service) SetPassword(ctx context.Context, username, password string) error {
 	if n := utf8.RuneCountInString(password); n < 8 || n > 128 {
-		return fieldErrors{"password": "8 to 128 characters"}.err()
+		return fieldErrors{"password": "8 to 128 characters"}.Err()
 	}
 	hash, err := security.HashPassword(password)
 	if err != nil {

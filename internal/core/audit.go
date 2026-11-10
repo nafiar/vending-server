@@ -86,7 +86,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, q AuditQuery) ([]AuditView,
 		switch q.EntityType {
 		case entityProduct, entityMachine, entitySlot, entityUser:
 		default:
-			return nil, fieldErrors{"entityType": "Jenis harus PRODUCT, MACHINE, SLOT atau USER."}.err()
+			return nil, fieldErrors{"entityType": "Jenis harus PRODUCT, MACHINE, SLOT atau USER."}.Err()
 		}
 		where += " AND a.entity_type = ?"
 		args = append(args, q.EntityType)

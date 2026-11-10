@@ -32,12 +32,12 @@ func (s *Service) ListTransactions(ctx context.Context, q TransactionQuery) (Tra
 	}
 	fe := fieldErrors{}
 	if q.Status != "" && !transactionStatuses[q.Status] {
-		fe.add("status", "Status tidak dikenal.")
+		fe.Add("status", "Status tidak dikenal.")
 	}
 	if q.Flag != "" && q.Flag != "problem" && q.Flag != "reported" {
-		fe.add("flag", "Filter tinjauan harus problem atau reported.")
+		fe.Add("flag", "Filter tinjauan harus problem atau reported.")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return TransactionPage{}, err
 	}
 	page, size := pageOf(q.Page, q.PageSize, 25)

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"vending/internal/core"
+	"vending/internal/model"
 )
 
 const (
@@ -36,7 +37,7 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 		for k, v := range e.Extra {
 			body[k] = v
 		}
-		writeJSON(w, e.Status, body)
+		writeJSON(w, statusFor(e.Code), body)
 		return
 	}
 	rid := requestIDFrom(r.Context())
@@ -65,8 +66,7 @@ func decode(w http.ResponseWriter, r *http.Request, dst any, limit int64) error 
 	}
 	var tooBig *http.MaxBytesError
 	if errors.As(err, &tooBig) {
-		return &core.Error{Status: http.StatusRequestEntityTooLarge, Code: "PAYLOAD_TOO_LARGE",
-			Message: "Data terlalu besar. Gambar paling besar 2 MB."}
+		return model.NewError(model.CodePayloadTooLarge, "Data terlalu besar. Gambar paling besar 2 MB.")
 	}
 	return core.ErrBadRequest("Body harus JSON yang valid: " + err.Error())
 }
@@ -84,7 +84,7 @@ func bearer(r *http.Request) string {
 func pathID(r *http.Request, name string) (int64, error) {
 	v, err := strconv.ParseInt(r.PathValue(name), 10, 64)
 	if err != nil || v <= 0 {
-		return 0, &core.Error{Status: http.StatusNotFound, Code: "NOT_FOUND", Message: "Data tidak ditemukan."}
+		return 0, model.NotFound("Data tidak ditemukan.")
 	}
 	return v, nil
 }
@@ -124,7 +124,7 @@ func (q *query) err() error {
 	if len(q.fields) == 0 {
 		return nil
 	}
-	return &core.Error{Status: http.StatusUnprocessableEntity, Code: "VALIDATION", Message: "Periksa filter yang dipakai.", Fields: q.fields}
+	return &model.Error{Code: model.CodeValidation, Message: "Periksa filter yang dipakai.", Fields: q.fields}
 }
 
 // logLevelFor keeps static files out of the info log.

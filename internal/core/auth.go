@@ -5,20 +5,20 @@ import (
 	"database/sql"
 	"errors"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"vending/internal/model"
 	"vending/internal/security"
 )
 
 const (
-	roleAdmin    = "ADMIN"
-	roleOperator = "OPERATOR"
+	roleAdmin    = model.RoleAdmin
+	roleOperator = model.RoleOperator
 
-	kindAdmin    = "ADMIN"
-	kindOperator = "OPERATOR"
+	kindAdmin    = model.KindAdmin
+	kindOperator = model.KindOperator
 
 	maxFailedLogins = 5               // FR-13
 	lockDuration    = 5 * time.Minute // FR-13
@@ -26,22 +26,10 @@ const (
 )
 
 // Principal is a logged-in staff member, taken from a session token.
-type Principal struct {
-	SessionID int64
-	UserID    int64
-	Name      string
-	Username  string
-	Role      string
-	MachineID int64     // operator sessions only: the machine the operator logged in on
-	StartedAt time.Time // when the session began; for an operator, the start of the visit
-}
+type Principal = model.Principal
 
 // Machine is the Kiosk Agent of one machine, taken from its machine key.
-type Machine struct {
-	ID   int64
-	Code string
-	Name string
-}
+type Machine = model.Machine
 
 type authUser struct {
 	id          int64
@@ -57,12 +45,18 @@ type authUser struct {
 func lockedErr(left time.Duration) *Error {
 	secs := int(math.Ceil(left.Seconds()))
 	mins := int(math.Ceil(left.Minutes()))
-	return &Error{
-		Status:  http.StatusLocked,
-		Code:    "LOCKED",
-		Message: "Akun terkunci karena terlalu banyak percobaan. Coba lagi dalam " + strconv.Itoa(mins) + " menit.",
-		Extra:   map[string]any{"retryInSeconds": secs},
-	}
+	return model.Locked(
+		"Akun terkunci karena terlalu banyak percobaan. Coba lagi dalam "+strconv.Itoa(mins)+" menit.",
+		map[string]any{"retryInSeconds": secs},
+	)
+}
+
+// invalidLogin is the same answer for an unknown username and a wrong password,
+// so neither can be told apart (FR-13).
+func invalidLogin(extra map[string]any) *Error {
+	e := model.NewError(model.CodeInvalidLogin, "Username atau password salah.")
+	e.Extra = extra
+	return e
 }
 
 // checkLogin verifies a username and password and applies the lockout rule:
@@ -82,7 +76,7 @@ func (s *Service) checkLogin(ctx context.Context, username, password string) (au
 			Scan(&u.id, &u.name, &u.username, &u.hash, &u.role, &u.active, &u.failed, &u.lockedUntil)
 		if errors.Is(err, sql.ErrNoRows) {
 			security.BurnPasswordCheck(password) // same timing as a real check
-			refusal = &Error{Status: http.StatusUnauthorized, Code: "INVALID_LOGIN", Message: "Username atau password salah."}
+			refusal = invalidLogin(nil)
 			return nil
 		}
 		if err != nil {
@@ -104,8 +98,7 @@ func (s *Service) checkLogin(ctx context.Context, username, password string) (au
 				refusal = lockedErr(lockDuration)
 			} else {
 				_, err = tx.ExecContext(ctx, `UPDATE users SET failed_logins = ?, locked_until = NULL WHERE id = ?`, failed, u.id)
-				refusal = &Error{Status: http.StatusUnauthorized, Code: "INVALID_LOGIN", Message: "Username atau password salah.",
-					Extra: map[string]any{"attemptsLeft": maxFailedLogins - failed}}
+				refusal = invalidLogin(map[string]any{"attemptsLeft": maxFailedLogins - failed})
 			}
 			return err
 		}
@@ -240,7 +233,7 @@ func (s *Service) Me(p Principal) Me { return Me{Name: p.Name, Username: p.Usern
 // AuthenticateMachine checks a machine key (FR-23, BR-12) and records the
 // contact time that the recap shows as "kontak terakhir" (FR-28).
 func (s *Service) AuthenticateMachine(ctx context.Context, key string) (Machine, error) {
-	unknown := &Error{Status: http.StatusUnauthorized, Code: "INVALID_MACHINE_KEY", Message: "Kunci mesin tidak dikenal."}
+	unknown := model.NewError(model.CodeInvalidMachineKey, "Kunci mesin tidak dikenal.")
 	if key == "" {
 		return Machine{}, unknown
 	}
@@ -256,7 +249,7 @@ func (s *Service) AuthenticateMachine(ctx context.Context, key string) (Machine,
 		return Machine{}, err
 	}
 	if !active {
-		return Machine{}, &Error{Status: http.StatusForbidden, Code: "MACHINE_INACTIVE", Message: "Mesin ini dinonaktifkan di panel admin."}
+		return Machine{}, model.MachineInactive("Mesin ini dinonaktifkan di panel admin.")
 	}
 	if now := s.now(); !lastSeen.Valid || now.Sub(lastSeen.Time) >= 30*time.Second {
 		if _, err := s.db.ExecContext(ctx, `UPDATE machines SET last_seen_at = ? WHERE id = ?`, now, m.ID); err != nil {

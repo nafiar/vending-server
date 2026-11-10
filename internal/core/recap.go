@@ -67,12 +67,12 @@ func (s *Service) GetRecap(ctx context.Context, q RecapQuery) (Recap, error) {
 		q.Breakdown = "product"
 	}
 	if q.GroupBy != "day" && q.GroupBy != "week" && q.GroupBy != "month" {
-		fe.add("groupBy", "Kelompokkan per day, week atau month.")
+		fe.Add("groupBy", "Kelompokkan per day, week atau month.")
 	}
 	if q.Breakdown != "product" && q.Breakdown != "slot" {
-		fe.add("breakdown", "Rincian per product atau slot.")
+		fe.Add("breakdown", "Rincian per product atau slot.")
 	}
-	if err := fe.err(); err != nil {
+	if err := fe.Err(); err != nil {
 		return Recap{}, err
 	}
 	r, err := s.parseRange(q.From, q.To, 30, 731)
