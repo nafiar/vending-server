@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"vending/internal/common/security"
 	"vending/internal/repository/mysqldb"
 )
 
@@ -168,7 +169,7 @@ type lockedSlot struct {
 // reloads. Counts outside 0..capacity are refused and nothing is saved
 // (TC-14 to TC-16).
 func (s *Service) SaveRestock(ctx context.Context, m Machine, p Principal, in RestockInput) (RestockSaved, error) {
-	clientID, ok := normalizeUUID(in.ID)
+	clientID, ok := security.NormalizeUUID(in.ID)
 	if !ok {
 		return RestockSaved{}, invalidInput("ID kunjungan harus UUID.", map[string]string{"id": "UUID tidak valid"})
 	}

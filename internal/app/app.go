@@ -24,9 +24,12 @@ import (
 	"vending/internal/repository/machine"
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	"vending/internal/repository/transaction"
+	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
 	uowmysql "vending/internal/repository/uow/mysql"
 	"vending/internal/usecase/catalog"
+	"vending/internal/usecase/purchase"
 )
 
 // Deps is the built graph.
@@ -34,12 +37,14 @@ type Deps struct {
 	Runner *mysqldb.Runner
 
 	// repositories, bound to the pool for reads that need no transaction
-	UOW      uow.Repository
-	Machines machine.Repository
-	Images   imagestore.Repository
+	UOW          uow.Repository
+	Machines     machine.Repository
+	Transactions transaction.Repository
+	Images       imagestore.Repository
 
 	// usecases
-	Catalog catalog.UseCase
+	Catalog  catalog.UseCase
+	Purchase purchase.UseCase
 }
 
 // Wire builds the graph. Settings in, usable system out. now is the clock the
@@ -50,14 +55,19 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 
 	d.UOW = uowmysql.New(d.Runner)
 	d.Machines = machinemysql.New(db)
+	d.Transactions = transactionmysql.New(db)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
-	d.Catalog = catalog.New(d.UOW, d.Machines, cl, cfg.PaymentWindow, log)
+	cat := catalog.New(d.UOW, d.Machines, cl, cfg.PaymentWindow, log)
+	d.Catalog = cat
+	// A refused stale purchase answers with the fresh catalog, so purchase
+	// depends on the catalog usecase rather than reading the slots again itself.
+	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
 	return d
 }
 
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() httpapi.UseCases {
-	return httpapi.UseCases{Catalog: d.Catalog}
+	return httpapi.UseCases{Catalog: d.Catalog, Purchase: d.Purchase}
 }

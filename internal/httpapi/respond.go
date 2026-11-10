@@ -54,12 +54,15 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 // wireValue maps a domain value carried in an error's Extra to its wire shape.
-// CATALOG_STALE answers with the fresh catalog, and a model type has no JSON
-// field names of its own: those belong to this layer.
+// CATALOG_STALE answers with the fresh catalog and a refused second dispense
+// result answers with the state it already has; a model type has no JSON field
+// names of its own, because those belong to this layer.
 func wireValue(v any) any {
 	switch x := v.(type) {
 	case model.Catalog:
 		return catalogView(x)
+	case model.Transaction:
+		return transactionStateView(x)
 	default:
 		return v
 	}
@@ -145,4 +148,17 @@ func logLevelFor(path string) slog.Level {
 		return slog.LevelInfo
 	}
 	return slog.LevelDebug
+}
+
+// intField reads a whole number sent as JSON. The admin web and the kiosk send
+// these as numbers, but a browser can turn a large one into 1e9 and a careless
+// client sends "3"; json.Number holds the text either way, so both are refused
+// here rather than silently read as zero.
+func intField(n json.Number) (int64, bool) {
+	s := strings.TrimSpace(n.String())
+	if s == "" {
+		return 0, false
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	return v, err == nil
 }

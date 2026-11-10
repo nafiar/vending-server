@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"regexp"
+	"strings"
 )
 
 // NewToken returns prefix + 32 random bytes in URL-safe base64 (256 bits).
@@ -53,4 +55,18 @@ func TemporaryPassword(n int) string {
 		out[i] = temporaryAlphabet[k.Int64()]
 	}
 	return string(out)
+}
+
+// uuidPattern is the canonical textual UUID: 8-4-4-4-12 lowercase hex digits.
+var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// NormalizeUUID lowercases and trims a UUID a client sent, and reports whether
+// what is left is one at all.
+//
+// The kiosk and the operator tablet generate these ids themselves, which is
+// what makes a repeated request safe to answer with the record it already
+// created (NFR-03). So the shape is checked once, here, beside NewUUID.
+func NormalizeUUID(s string) (string, bool) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	return s, uuidPattern.MatchString(s)
 }

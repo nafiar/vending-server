@@ -138,7 +138,6 @@ func open(ctx context.Context, forceMigrate bool) (*instance, error) {
 	svc := core.New(db, core.Options{
 		Location:      cfg.Location,
 		Images:        d.Images,
-		Catalog:       d.Catalog,
 		AdminIdle:     cfg.AdminIdle,
 		OperatorIdle:  cfg.OperatorIdle,
 		PaymentWindow: cfg.PaymentWindow,

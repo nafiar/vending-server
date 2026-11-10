@@ -239,31 +239,6 @@ type MachineInfo struct {
 	Name string `json:"name"`
 }
 
-type CreatedTransaction struct {
-	ID               string       `json:"id"`
-	SlotNumber       int          `json:"slotNumber"`
-	Product          ProductBrief `json:"product"`
-	Amount           int64        `json:"amount"`
-	ExpiresInSeconds int          `json:"expiresInSeconds"`
-	Status           string       `json:"status"`
-	CreatedAt        int64        `json:"createdAt"`
-}
-
-type TransactionState struct {
-	ID                 string  `json:"id"`
-	Status             string  `json:"status"`
-	FailureReason      *string `json:"failureReason"`
-	PaidAt             *int64  `json:"paidAt"`
-	FinishedAt         *int64  `json:"finishedAt"`
-	CustomerReportedAt *int64  `json:"customerReportedAt"`
-}
-
-type ReportResult struct {
-	ID         string `json:"id"`
-	Reported   bool   `json:"reported"`
-	ReportedAt int64  `json:"reportedAt"`
-}
-
 type OperatorSlots struct {
 	Machine MachineInfo `json:"machine"`
 	Slots   []SlotView  `json:"slots"`

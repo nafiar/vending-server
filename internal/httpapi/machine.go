@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"vending/internal/core"
+	"vending/internal/model"
+	"vending/internal/usecase/purchase"
 )
 
 // Machine endpoints, called by the Kiosk Agent with its machine key in the
@@ -27,41 +29,61 @@ func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request, m core.Machin
 }
 
 func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	var in core.CreateTransactionInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
+	var b createTransactionBody
+	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.CreateTransaction(r.Context(), m, in)
+	in, err := b.input()
+	if err != nil {
+		return nil, err
+	}
+	p, err := s.uc.Purchase.Create(r.Context(), m, in)
+	if err != nil {
+		return nil, err
+	}
+	return createdTransactionView(p), nil
 }
 
 func (s *Server) transactionStatus(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	return s.svc.TransactionStatus(r.Context(), m, r.PathValue("id"))
+	return state(s.uc.Purchase.Status(r.Context(), m, r.PathValue("id")))
 }
 
 func (s *Server) pay(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	return s.svc.Pay(r.Context(), m, r.PathValue("id"))
+	return state(s.uc.Purchase.Pay(r.Context(), m, r.PathValue("id")))
 }
 
 func (s *Server) result(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	var in core.ResultInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
+	var b resultBody
+	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.RecordResult(r.Context(), m, r.PathValue("id"), in)
+	return state(s.uc.Purchase.Result(r.Context(), m, r.PathValue("id"),
+		purchase.ResultInput{Status: b.Status, FailureReason: b.FailureReason}))
 }
 
 func (s *Server) cancel(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	var in struct {
-		Reason string `json:"reason"` // CANCEL (customer tapped Batal) or TIMEOUT (60 s passed)
-	}
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
+	var b cancelBody
+	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.Cancel(r.Context(), m, r.PathValue("id"), in.Reason)
+	return state(s.uc.Purchase.Cancel(r.Context(), m, r.PathValue("id"), b.Reason))
 }
 
 func (s *Server) report(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	return s.svc.Report(r.Context(), m, r.PathValue("id"))
+	t, err := s.uc.Purchase.Report(r.Context(), m, r.PathValue("id"))
+	if err != nil {
+		return nil, err
+	}
+	return reportResultView(t), nil
+}
+
+// state is the answer of every step that reports where a purchase has got to,
+// so each of those handlers is one line.
+func state(t model.Transaction, err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	return transactionStateView(t), nil
 }
 
 func (s *Server) operatorLogin(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {

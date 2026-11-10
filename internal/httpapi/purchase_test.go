@@ -23,12 +23,12 @@ func TestTC01_Purchase(t *testing.T) {
 		t.Fatalf("catalog: %+v", c)
 	}
 	id := security.NewUUID()
-	var created core.CreatedTransaction
+	var created createdReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions", map[string]any{"id": id, "slotNumber": 1, "catalogVersion": c.CatalogVersion}), &created)
 	if created.Status != "PENDING" || created.Amount != 25000 || created.ExpiresInSeconds != 60 {
 		t.Fatalf("created: %+v", created)
 	}
-	var st core.TransactionState
+	var st stateReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/pay", nil), &st)
 	if st.Status != "PAID" || st.PaidAt == nil {
 		t.Fatalf("pay: %+v", st)
@@ -58,7 +58,7 @@ func TestTC03_TC04_CancelAndTimeout(t *testing.T) {
 	mid, key := e.setupMachine("VM-01", 10, []int64{p}, []int{3})
 
 	a := e.startPurchase(key, 1)
-	var st core.TransactionState
+	var st stateReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+a+"/cancel", map[string]string{"reason": "CANCEL"}), &st)
 	if st.Status != "CANCELLED" {
 		t.Fatalf("cancel: %+v", st)
@@ -95,7 +95,7 @@ func TestTC05_PayAfterWindow(t *testing.T) {
 	id := e.startPurchase(key, 1)
 	e.clock.Advance(61 * time.Second)
 	e.expect(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/pay", nil), http.StatusGone, "EXPIRED")
-	var st core.TransactionState
+	var st stateReply
 	e.mustOK(e.asMachine(key, "GET", "/api/machine/transactions/"+id, nil), &st)
 	if st.Status != "EXPIRED" {
 		t.Fatalf("want EXPIRED, got %+v", st)
@@ -116,7 +116,7 @@ func TestTC06_FailedDispense(t *testing.T) {
 
 	id := e.startPurchase(key, 1)
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/pay", nil), nil)
-	var st core.TransactionState
+	var st stateReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/result", map[string]string{"status": "FAILED", "failureReason": "MOTOR_TIMEOUT"}), &st)
 	if st.Status != "FAILED" || st.FailureReason == nil || *st.FailureReason != "MOTOR_TIMEOUT" {
 		t.Fatalf("result: %+v", st)
@@ -269,7 +269,7 @@ func TestTC12_CustomerReport(t *testing.T) {
 
 	id := e.buy(key, 1)
 	e.clock.Advance(20 * time.Second)
-	var rep core.ReportResult
+	var rep reportReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/report", nil), &rep)
 	if !rep.Reported {
 		t.Fatal("not reported")
@@ -296,7 +296,7 @@ func TestTC37_AgentRestart(t *testing.T) {
 	id := e.startPurchase(key, 1)
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/transactions/"+id+"/pay", nil), nil)
 	// After the restart the agent asks where the transaction stopped: PAID, no result yet.
-	var st core.TransactionState
+	var st stateReply
 	e.mustOK(e.asMachine(key, "GET", "/api/machine/transactions/"+id, nil), &st)
 	if st.Status != "PAID" {
 		t.Fatalf("status: %+v", st)

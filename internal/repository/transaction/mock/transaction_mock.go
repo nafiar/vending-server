@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 	time "time"
+	model "vending/internal/model"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -54,4 +55,133 @@ func (m *MockRepository) CountOpenBySlot(ctx context.Context, machineID int64, p
 func (mr *MockRepositoryMockRecorder) CountOpenBySlot(ctx, machineID, pendingSince any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountOpenBySlot", reflect.TypeOf((*MockRepository)(nil).CountOpenBySlot), ctx, machineID, pendingSince)
+}
+
+// CountOpenShared mocks base method.
+func (m *MockRepository) CountOpenShared(ctx context.Context, slotID int64) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountOpenShared", ctx, slotID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountOpenShared indicates an expected call of CountOpenShared.
+func (mr *MockRepositoryMockRecorder) CountOpenShared(ctx, slotID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountOpenShared", reflect.TypeOf((*MockRepository)(nil).CountOpenShared), ctx, slotID)
+}
+
+// Create mocks base method.
+func (m *MockRepository) Create(ctx context.Context, t model.Transaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, t)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRepositoryMockRecorder) Create(ctx, t any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, t)
+}
+
+// ExpireStale mocks base method.
+func (m *MockRepository) ExpireStale(ctx context.Context, slotID int64, startedBefore time.Time, window time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExpireStale", ctx, slotID, startedBefore, window)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExpireStale indicates an expected call of ExpireStale.
+func (mr *MockRepositoryMockRecorder) ExpireStale(ctx, slotID, startedBefore, window any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpireStale", reflect.TypeOf((*MockRepository)(nil).ExpireStale), ctx, slotID, startedBefore, window)
+}
+
+// Fail mocks base method.
+func (m *MockRepository) Fail(ctx context.Context, id, reason string, at time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Fail", ctx, id, reason, at)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Fail indicates an expected call of Fail.
+func (mr *MockRepositoryMockRecorder) Fail(ctx, id, reason, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fail", reflect.TypeOf((*MockRepository)(nil).Fail), ctx, id, reason, at)
+}
+
+// Finish mocks base method.
+func (m *MockRepository) Finish(ctx context.Context, id, status string, at time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Finish", ctx, id, status, at)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Finish indicates an expected call of Finish.
+func (mr *MockRepositoryMockRecorder) Finish(ctx, id, status, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finish", reflect.TypeOf((*MockRepository)(nil).Finish), ctx, id, status, at)
+}
+
+// Get mocks base method.
+func (m *MockRepository) Get(ctx context.Context, id string) (model.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, id)
+	ret0, _ := ret[0].(model.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, id)
+}
+
+// LockForUpdate mocks base method.
+func (m *MockRepository) LockForUpdate(ctx context.Context, id string) (model.Transaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockForUpdate", ctx, id)
+	ret0, _ := ret[0].(model.Transaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockForUpdate indicates an expected call of LockForUpdate.
+func (mr *MockRepositoryMockRecorder) LockForUpdate(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForUpdate", reflect.TypeOf((*MockRepository)(nil).LockForUpdate), ctx, id)
+}
+
+// MarkPaid mocks base method.
+func (m *MockRepository) MarkPaid(ctx context.Context, id string, at time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkPaid", ctx, id, at)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkPaid indicates an expected call of MarkPaid.
+func (mr *MockRepositoryMockRecorder) MarkPaid(ctx, id, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkPaid", reflect.TypeOf((*MockRepository)(nil).MarkPaid), ctx, id, at)
+}
+
+// MarkReported mocks base method.
+func (m *MockRepository) MarkReported(ctx context.Context, id string, at time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkReported", ctx, id, at)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkReported indicates an expected call of MarkReported.
+func (mr *MockRepositoryMockRecorder) MarkReported(ctx, id, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkReported", reflect.TypeOf((*MockRepository)(nil).MarkReported), ctx, id, at)
 }

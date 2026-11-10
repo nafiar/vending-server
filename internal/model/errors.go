@@ -42,6 +42,12 @@ const (
 // no repository writes screen text.
 var ErrNoRecord = errors.New("no such record")
 
+// ErrDuplicateID is what a repository returns when the row it was asked to
+// create already exists under that id. The kiosk generates the transaction id,
+// so two retries of one request can race; the usecase answers by re-reading the
+// transaction that won rather than by failing (NFR-03).
+var ErrDuplicateID = errors.New("that id is already used")
+
 // Error is a failure the API reports as JSON: {"code", "message", "fields"?,
 // ...Extra}. Messages are in Bahasa Indonesia because the screens show them as
 // they are. An error that is not an *Error is a server fault, reported as

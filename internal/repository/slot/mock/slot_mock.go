@@ -55,3 +55,47 @@ func (mr *MockRepositoryMockRecorder) ListByMachine(ctx, machineID any) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByMachine", reflect.TypeOf((*MockRepository)(nil).ListByMachine), ctx, machineID)
 }
+
+// LockForUpdate mocks base method.
+func (m *MockRepository) LockForUpdate(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockForUpdate", ctx, machineID, slotNumber)
+	ret0, _ := ret[0].(model.Slot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockForUpdate indicates an expected call of LockForUpdate.
+func (mr *MockRepositoryMockRecorder) LockForUpdate(ctx, machineID, slotNumber any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForUpdate", reflect.TypeOf((*MockRepository)(nil).LockForUpdate), ctx, machineID, slotNumber)
+}
+
+// MarkNeedsCheck mocks base method.
+func (m *MockRepository) MarkNeedsCheck(ctx context.Context, slotID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkNeedsCheck", ctx, slotID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkNeedsCheck indicates an expected call of MarkNeedsCheck.
+func (mr *MockRepositoryMockRecorder) MarkNeedsCheck(ctx, slotID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkNeedsCheck", reflect.TypeOf((*MockRepository)(nil).MarkNeedsCheck), ctx, slotID)
+}
+
+// TakeOne mocks base method.
+func (m *MockRepository) TakeOne(ctx context.Context, slotID int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TakeOne", ctx, slotID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TakeOne indicates an expected call of TakeOne.
+func (mr *MockRepositoryMockRecorder) TakeOne(ctx, slotID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TakeOne", reflect.TypeOf((*MockRepository)(nil).TakeOne), ctx, slotID)
+}

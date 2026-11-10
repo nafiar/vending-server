@@ -25,4 +25,19 @@ type Repository interface {
 	// TouchSeen records that this machine's agent made contact (FR-28). It is
 	// called often, so the caller decides how rarely to bother.
 	TouchSeen(ctx context.Context, id int64, at time.Time) error
+
+	// LockShared reads one machine and holds a shared lock on its row until the
+	// unit of work ends, so the catalog version and the active flag a rule just
+	// read cannot change under it while the rule acts on them.
+	//
+	// It is the first lock a purchase takes, before any slot (BR-06). Other
+	// readers may take the same shared lock; a writer waits.
+	LockShared(ctx context.Context, id int64) (model.MachineRecord, error)
+
+	// BumpCatalogVersion raises this machine's catalog version by one, which is
+	// how every kiosk is told that what it is showing is out of date (FR-04).
+	//
+	// It takes an exclusive lock on the machine row, so a caller that also locks
+	// a slot calls this first, keeping to the lock order above.
+	BumpCatalogVersion(ctx context.Context, id int64) error
 }

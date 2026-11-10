@@ -101,7 +101,7 @@ func newEnv(t *testing.T) *env {
 	// exercise the wiring that ships.
 	cfg := config.Config{Location: jakarta, UploadDir: uploads, PaymentWindow: 60 * time.Second}
 	deps := app.Wire(db, cfg, log, clock.Now)
-	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Catalog: deps.Catalog, Now: clock.Now, Logger: log})
+	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
 	srv := httptest.NewServer(httpapi.New(svc, deps.UseCases(), web, log, httpapi.Options{
 		UploadDir: uploads,
@@ -350,4 +350,40 @@ func (e *env) transactions(query string) core.TransactionPage {
 	var p core.TransactionPage
 	e.mustOK(e.asAdmin("GET", "/api/admin/transactions?"+query, nil), &p)
 	return p
+}
+
+// createdReply is a purchase as the kiosk reads it back, and stateReply and
+// reportReply are the answers to the steps after it. Like catalogReply, these
+// are the tests' own declaration of the contract: an end-to-end test that
+// unmarshalled into a production type would keep passing while the wire shape
+// moved under it.
+type createdReply struct {
+	ID         string `json:"id"`
+	SlotNumber int    `json:"slotNumber"`
+	Product    struct {
+		ID          int64   `json:"id"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Price       int64   `json:"price"`
+		ImageURL    *string `json:"imageUrl"`
+	} `json:"product"`
+	Amount           int64  `json:"amount"`
+	ExpiresInSeconds int    `json:"expiresInSeconds"`
+	Status           string `json:"status"`
+	CreatedAt        int64  `json:"createdAt"`
+}
+
+type stateReply struct {
+	ID                 string  `json:"id"`
+	Status             string  `json:"status"`
+	FailureReason      *string `json:"failureReason"`
+	PaidAt             *int64  `json:"paidAt"`
+	FinishedAt         *int64  `json:"finishedAt"`
+	CustomerReportedAt *int64  `json:"customerReportedAt"`
+}
+
+type reportReply struct {
+	ID         string `json:"id"`
+	Reported   bool   `json:"reported"`
+	ReportedAt int64  `json:"reportedAt"`
 }

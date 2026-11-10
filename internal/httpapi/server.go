@@ -18,6 +18,7 @@ import (
 
 	"vending/internal/core"
 	"vending/internal/usecase/catalog"
+	"vending/internal/usecase/purchase"
 )
 
 // Server routes requests to the usecases.
@@ -35,7 +36,8 @@ type Server struct {
 // It grows as each slice moves out of core, and when core is empty it is the
 // only dependency left (docs/REARCHITECTURE.md).
 type UseCases struct {
-	Catalog catalog.UseCase
+	Catalog  catalog.UseCase
+	Purchase purchase.UseCase
 }
 
 // Options are the server's settings and optional features.

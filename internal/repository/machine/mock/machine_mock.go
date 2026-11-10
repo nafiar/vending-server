@@ -42,6 +42,20 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// BumpCatalogVersion mocks base method.
+func (m *MockRepository) BumpCatalogVersion(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BumpCatalogVersion", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BumpCatalogVersion indicates an expected call of BumpCatalogVersion.
+func (mr *MockRepositoryMockRecorder) BumpCatalogVersion(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BumpCatalogVersion", reflect.TypeOf((*MockRepository)(nil).BumpCatalogVersion), ctx, id)
+}
+
 // Get mocks base method.
 func (m *MockRepository) Get(ctx context.Context, id int64) (model.MachineRecord, error) {
 	m.ctrl.T.Helper()
@@ -55,6 +69,21 @@ func (m *MockRepository) Get(ctx context.Context, id int64) (model.MachineRecord
 func (mr *MockRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, id)
+}
+
+// LockShared mocks base method.
+func (m *MockRepository) LockShared(ctx context.Context, id int64) (model.MachineRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockShared", ctx, id)
+	ret0, _ := ret[0].(model.MachineRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockShared indicates an expected call of LockShared.
+func (mr *MockRepositoryMockRecorder) LockShared(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockShared", reflect.TypeOf((*MockRepository)(nil).LockShared), ctx, id)
 }
 
 // TouchSeen mocks base method.
