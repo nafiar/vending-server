@@ -9,5 +9,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
+	go.uber.org/mock v0.6.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 )
