@@ -46,7 +46,34 @@ type DBConfig struct {
 
 var dbNamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{1,64}$`)
 
-// Load reads the configuration from the environment.
+// The defaults for the behaviour the PRD fixes. They are named, rather than
+// written inline where they are read, because more than one place needs them:
+// Load starts from them, and so does any test that builds a Config by hand.
+const (
+	DefaultAdminIdle     = 30 * time.Minute // BR-13
+	DefaultOperatorIdle  = 2 * time.Minute  // BR-13: a kiosk is a screen in public
+	DefaultPaymentWindow = 60 * time.Second // BR-06
+	DefaultTimezone      = "Asia/Jakarta"   // calendar days and hours for recaps (WIB)
+)
+
+// Defaults is a Config with the behavioural settings at their PRD values and
+// nothing read from the environment.
+//
+// Anything building a Config without Load should start here. A zero AdminIdle
+// means every admin session is idle the moment it is issued, and a zero
+// PaymentWindow means nothing can ever be paid for: both show up as a puzzling
+// 401 or 410 far from the line that caused them.
+func Defaults() Config {
+	loc, _ := time.LoadLocation(DefaultTimezone)
+	return Config{
+		Location:      loc,
+		AdminIdle:     DefaultAdminIdle,
+		OperatorIdle:  DefaultOperatorIdle,
+		PaymentWindow: DefaultPaymentWindow,
+	}
+}
+
+// Load reads the configuration from the environment, starting from Defaults.
 func Load() (Config, error) {
 	c := Config{
 		HTTPAddr: env("HTTP_ADDR", ":8080"),
@@ -66,7 +93,7 @@ func Load() (Config, error) {
 	}
 
 	var err error
-	tz := env("TIMEZONE", "Asia/Jakarta")
+	tz := env("TIMEZONE", DefaultTimezone)
 	if c.Location, err = time.LoadLocation(tz); err != nil {
 		return c, fmt.Errorf("TIMEZONE %q: %w", tz, err)
 	}
@@ -76,13 +103,13 @@ func Load() (Config, error) {
 	if c.DemoMode, err = boolEnv("DEMO_MODE", false); err != nil {
 		return c, err
 	}
-	if c.AdminIdle, err = durationEnv("ADMIN_SESSION_IDLE", 30*time.Minute); err != nil {
+	if c.AdminIdle, err = durationEnv("ADMIN_SESSION_IDLE", DefaultAdminIdle); err != nil {
 		return c, err
 	}
-	if c.OperatorIdle, err = durationEnv("OPERATOR_SESSION_IDLE", 2*time.Minute); err != nil {
+	if c.OperatorIdle, err = durationEnv("OPERATOR_SESSION_IDLE", DefaultOperatorIdle); err != nil {
 		return c, err
 	}
-	if c.PaymentWindow, err = durationEnv("PAYMENT_WINDOW", 60*time.Second); err != nil {
+	if c.PaymentWindow, err = durationEnv("PAYMENT_WINDOW", DefaultPaymentWindow); err != nil {
 		return c, err
 	}
 	if (c.TLSCert == "") != (c.TLSKey == "") {

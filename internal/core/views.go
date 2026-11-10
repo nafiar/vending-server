@@ -42,18 +42,6 @@ type Totals struct {
 
 // ---------------------------------------------------------------- admin
 
-type LoginResult struct {
-	Token    string `json:"token"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-}
-
-type Me struct {
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-}
-
 type Summary struct {
 	Today             Totals `json:"today"`
 	SameTimeYesterday Totals `json:"sameTimeYesterday"`

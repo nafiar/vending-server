@@ -11,28 +11,24 @@ import (
 // Admin endpoints. The request and response shapes are the contract in
 // admin/README.md, which the admin web's js/api.js already calls.
 
-type loginBody struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (s *Server) adminLogin(w http.ResponseWriter, r *http.Request) (any, error) {
 	var b loginBody
 	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.AdminLogin(r.Context(), b.Username, b.Password)
+	l, err := s.uc.Auth.AdminLogin(r.Context(), b.Username, b.Password)
+	if err != nil {
+		return nil, err
+	}
+	return loginView(l), nil
 }
 
 func (s *Server) adminLogout(w http.ResponseWriter, r *http.Request) (any, error) {
-	return map[string]bool{"ok": true}, s.svc.Logout(r.Context(), bearer(r))
+	return ok(), s.uc.Auth.Logout(r.Context(), bearer(r))
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	return struct {
-		core.Me
-		DemoMode bool `json:"demoMode"`
-	}{s.svc.Me(p), s.opts.DemoReset != nil}, nil
+	return meView(p, s.opts.DemoReset != nil), nil
 }
 
 // demoReset wipes the database and loads the demo data again. Every session

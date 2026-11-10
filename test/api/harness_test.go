@@ -99,7 +99,10 @@ func newEnv(t *testing.T) *env {
 	uploads := t.TempDir()
 	// The graph is built by the same function the binary uses, so these tests
 	// exercise the wiring that ships.
-	cfg := config.Config{Location: jakarta, UploadDir: uploads, PaymentWindow: 60 * time.Second}
+	// Start from the shipped defaults and change only what the tests need, so
+	// the system under test runs with the timings that ship (BR-06, BR-13).
+	cfg := config.Defaults()
+	cfg.Location, cfg.UploadDir = jakarta, uploads
 	deps := app.Wire(db, cfg, log, clock.Now)
 	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
@@ -120,7 +123,7 @@ func newEnv(t *testing.T) *env {
 // relogin signs the admin in again, after the clock jumped past the 30-minute idle limit.
 func (e *env) relogin() {
 	e.t.Helper()
-	var login core.LoginResult
+	var login loginReply
 	e.mustOK(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin12345"}, nil), &login)
 	e.admin = login.Token
 }
@@ -232,7 +235,7 @@ func (e *env) createOperator(username, password string) int64 {
 
 func (e *env) operatorLogin(key, username, password string) string {
 	e.t.Helper()
-	var r core.LoginResult
+	var r loginReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/operator/login", map[string]string{"username": username, "password": password}), &r)
 	return r.Token
 }
@@ -386,4 +389,20 @@ type reportReply struct {
 	ID         string `json:"id"`
 	Reported   bool   `json:"reported"`
 	ReportedAt int64  `json:"reportedAt"`
+}
+
+// loginReply and meReply are what the admin web and the kiosk's operator
+// screen read when someone signs in, declared here rather than imported, for
+// the reason catalogReply gives.
+type loginReply struct {
+	Token    string `json:"token"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+}
+
+type meReply struct {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	DemoMode bool   `json:"demoMode"`
 }

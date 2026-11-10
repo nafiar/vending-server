@@ -15,11 +15,15 @@ func (s *Server) operatorLogin(w http.ResponseWriter, r *http.Request, m model.M
 	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.OperatorLogin(r.Context(), m, b.Username, b.Password)
+	l, err := s.uc.Auth.OperatorLogin(r.Context(), m, b.Username, b.Password)
+	if err != nil {
+		return nil, err
+	}
+	return loginView(l), nil
 }
 
 func (s *Server) operatorLogout(w http.ResponseWriter, r *http.Request, m model.Machine) (any, error) {
-	return map[string]bool{"ok": true}, s.svc.Logout(r.Context(), bearer(r))
+	return ok(), s.uc.Auth.Logout(r.Context(), bearer(r))
 }
 
 func (s *Server) operatorSlots(w http.ResponseWriter, r *http.Request, m model.Machine, p model.Principal) (any, error) {

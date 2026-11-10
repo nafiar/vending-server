@@ -137,7 +137,7 @@ func TestAPIContract(t *testing.T) {
 
 	capture("GET /api/health", e.do("GET", "/api/health", nil, nil))
 
-	var login core.LoginResult
+	var login loginReply
 	r := capture("POST /api/admin/login", e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin123"}, nil))
 	e.mustOK(r, &login)
 	e.admin = login.Token
@@ -208,7 +208,7 @@ func TestAPIContract(t *testing.T) {
 	capture("POST /api/machine/heartbeat", e.asMachine(key, "POST", "/api/machine/heartbeat", nil))
 
 	// Operator mode (UC-04, UC-05).
-	var opLogin core.LoginResult
+	var opLogin loginReply
 	r = capture("POST /api/machine/operator/login", e.asMachine(key, "POST", "/api/machine/operator/login",
 		map[string]string{"username": "budi", "password": "budi123"}))
 	e.mustOK(r, &opLogin)

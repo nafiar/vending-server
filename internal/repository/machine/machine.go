@@ -26,6 +26,12 @@ type Repository interface {
 	// called often, so the caller decides how rarely to bother.
 	TouchSeen(ctx context.Context, id int64, at time.Time) error
 
+	// ByAPIKeyHash returns the machine whose machine key hashes to this value,
+	// or an error wrapping model.ErrNoRecord. The key itself is never stored,
+	// only its hash, so a leaked table row cannot be used as a key (FR-23,
+	// BR-12).
+	ByAPIKeyHash(ctx context.Context, keyHash string) (model.MachineRecord, error)
+
 	// LockShared reads one machine and holds a shared lock on its row until the
 	// unit of work ends, so the catalog version and the active flag a rule just
 	// read cannot change under it while the rule acts on them.

@@ -4,6 +4,7 @@ import (
 	"vending/internal/repository/machine"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
+	"vending/internal/repository/user"
 )
 
 // Tx is the transaction-scoped bundle: every getter returns a repository bound
@@ -20,4 +21,5 @@ type Tx interface {
 	Machines() machine.Repository
 	Slots() slot.Repository
 	Transactions() transaction.Repository
+	Users() user.Repository
 }

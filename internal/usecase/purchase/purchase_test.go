@@ -10,13 +10,10 @@ import (
 
 	"vending/internal/common/clock"
 	"vending/internal/model"
-	"vending/internal/repository/machine"
 	machinemock "vending/internal/repository/machine/mock"
-	"vending/internal/repository/slot"
 	slotmock "vending/internal/repository/slot/mock"
-	"vending/internal/repository/transaction"
 	transactionmock "vending/internal/repository/transaction/mock"
-	"vending/internal/repository/uow"
+	"vending/internal/repository/uow/uowtest"
 	catalogmock "vending/internal/usecase/catalog/mock"
 	"vending/internal/usecase/purchase"
 )
@@ -34,48 +31,31 @@ var (
 	txID   = "3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b"
 )
 
-// unit is a unit of work over mock repositories: Do and Read just call fn with
-// the bundle, which is the behaviour a usecase may rely on.
-type unit struct {
+// fixture is the usecase with every boundary mocked. The unit of work comes
+// from the shared test bundle, so adding a getter to uow.Tx does not break
+// tests that never reach for it.
+type fixture struct {
+	unit         *uowtest.Bundle
 	machines     *machinemock.MockRepository
 	slots        *slotmock.MockRepository
 	transactions *transactionmock.MockRepository
-	// attempts counts how often the unit of work was opened, so a test can see
-	// a retry happen.
-	attempts int
-}
-
-func (u *unit) Do(ctx context.Context, fn func(uow.Tx) error) error {
-	u.attempts++
-	return fn(u)
-}
-func (u *unit) Read(ctx context.Context, fn func(uow.Tx) error) error { return fn(u) }
-
-func (u *unit) Machines() machine.Repository         { return u.machines }
-func (u *unit) Slots() slot.Repository               { return u.slots }
-func (u *unit) Transactions() transaction.Repository { return u.transactions }
-
-var _ uow.Repository = (*unit)(nil)
-var _ uow.Tx = (*unit)(nil)
-
-type fixture struct {
-	*unit
-	catalog *catalogmock.MockUseCase
-	uc      *purchase.Service
+	catalog      *catalogmock.MockUseCase
+	uc           *purchase.Service
 }
 
 func newFixture(t *testing.T) (*fixture, *gomock.Controller) {
 	ctrl := gomock.NewController(t)
-	u := &unit{
+	f := &fixture{
 		machines:     machinemock.NewMockRepository(ctrl),
 		slots:        slotmock.NewMockRepository(ctrl),
 		transactions: transactionmock.NewMockRepository(ctrl),
+		catalog:      catalogmock.NewMockUseCase(ctrl),
 	}
-	cat := catalogmock.NewMockUseCase(ctrl)
+	f.unit = &uowtest.Bundle{MachineRepo: f.machines, SlotRepo: f.slots, TransactionRepo: f.transactions}
 	// The pool-bound repository and the one inside the unit are the same type,
 	// so one mock serves both.
-	uc := purchase.New(u, u.transactions, cat, clock.New(func() time.Time { return t0 }), window, nil)
-	return &fixture{unit: u, catalog: cat, uc: uc}, ctrl
+	f.uc = purchase.New(f.unit, f.transactions, f.catalog, clock.New(func() time.Time { return t0 }), window, nil)
+	return f, ctrl
 }
 
 func active(version int64) model.MachineRecord {
@@ -358,8 +338,8 @@ func TestCreateRetriesOnceWhenTheSameIDWasInsertedConcurrently(t *testing.T) {
 	if got.Transaction.ID != txID {
 		t.Errorf("transaction = %+v", got.Transaction)
 	}
-	if f.attempts != 2 {
-		t.Errorf("opened the unit of work %d times, want 2", f.attempts)
+	if f.unit.Attempts != 2 {
+		t.Errorf("opened the unit of work %d times, want 2", f.unit.Attempts)
 	}
 }
 
@@ -378,33 +358,14 @@ func TestCreateCarriesNothingOverFromARetriedAttempt(t *testing.T) {
 	f.transactions.EXPECT().CountOpenShared(gomock.Any(), gomock.Any()).Return(0, nil)
 	f.transactions.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-	retried := &retryOnce{unit: f.unit}
-	uc := purchase.New(retried, f.transactions, f.catalog,
-		clock.New(func() time.Time { return t0 }), window, nil)
-	got, err := uc.Create(context.Background(), vm, input())
+	f.unit.RetryFirst = true
+	got, err := f.uc.Create(context.Background(), vm, input())
 	if err != nil {
 		t.Fatalf("err = %v, want the second attempt to stand", err)
 	}
 	if got.Transaction.ID != txID {
 		t.Errorf("transaction = %+v", got.Transaction)
 	}
-}
-
-// retryOnce runs the first unit of work twice, as the mysql driver does when
-// InnoDB aborts one, and discards what the first attempt did.
-type retryOnce struct {
-	*unit
-	done bool
-}
-
-func (r *retryOnce) Do(ctx context.Context, fn func(uow.Tx) error) error {
-	if !r.done {
-		r.done = true
-		if err := fn(r.unit); err != nil {
-			return err
-		}
-	}
-	return fn(r.unit)
 }
 
 // ---------------------------------------------------------------- pay
@@ -799,8 +760,8 @@ func TestStatusReadsWithoutOpeningAUnitOfWork(t *testing.T) {
 	if got.Status != model.StatusPaid {
 		t.Errorf("status = %s", got.Status)
 	}
-	if f.attempts != 0 {
-		t.Errorf("opened the unit of work %d times, want 0", f.attempts)
+	if f.unit.Attempts != 0 {
+		t.Errorf("opened the unit of work %d times, want 0", f.unit.Attempts)
 	}
 }
 

@@ -24,10 +24,13 @@ import (
 	"vending/internal/repository/machine"
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	"vending/internal/repository/session"
+	sessionmysql "vending/internal/repository/session/mysql"
 	"vending/internal/repository/transaction"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
 	uowmysql "vending/internal/repository/uow/mysql"
+	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	"vending/internal/usecase/purchase"
 )
@@ -40,9 +43,11 @@ type Deps struct {
 	UOW          uow.Repository
 	Machines     machine.Repository
 	Transactions transaction.Repository
+	Sessions     session.Repository
 	Images       imagestore.Repository
 
 	// usecases
+	Auth     auth.UseCase
 	Catalog  catalog.UseCase
 	Purchase purchase.UseCase
 }
@@ -56,9 +61,11 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.UOW = uowmysql.New(d.Runner)
 	d.Machines = machinemysql.New(db)
 	d.Transactions = transactionmysql.New(db)
+	d.Sessions = sessionmysql.New(db)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
+	d.Auth = auth.New(d.UOW, d.Sessions, d.Machines, cl, cfg.AdminIdle, cfg.OperatorIdle, log)
 	cat := catalog.New(d.UOW, d.Machines, cl, cfg.PaymentWindow, log)
 	d.Catalog = cat
 	// A refused stale purchase answers with the fresh catalog, so purchase
@@ -69,5 +76,5 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() deliveryhttp.UseCases {
-	return deliveryhttp.UseCases{Catalog: d.Catalog, Purchase: d.Purchase}
+	return deliveryhttp.UseCases{Auth: d.Auth, Catalog: d.Catalog, Purchase: d.Purchase}
 }

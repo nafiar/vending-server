@@ -10,10 +10,12 @@ import (
 	slotmysql "vending/internal/repository/slot/mysql"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
+	usermysql "vending/internal/repository/user/mysql"
 
 	"vending/internal/repository/machine"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
+	"vending/internal/repository/user"
 )
 
 // MySQL turns a unit of work into one database transaction, with the retry the
@@ -43,3 +45,4 @@ var _ uow.Tx = bundle{}
 func (b bundle) Machines() machine.Repository         { return machinemysql.New(b.q) }
 func (b bundle) Slots() slot.Repository               { return slotmysql.New(b.q) }
 func (b bundle) Transactions() transaction.Repository { return transactionmysql.New(b.q) }
+func (b bundle) Users() user.Repository               { return usermysql.New(b.q) }

@@ -26,7 +26,7 @@ func TestTC21_AdminLogin(t *testing.T) {
 	e.expect(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "salah"}, nil), http.StatusUnauthorized, "INVALID_LOGIN")
 	e.expect(e.do("GET", "/api/admin/me", nil, nil), http.StatusUnauthorized, "UNAUTHORIZED")
 
-	var me core.Me
+	var me meReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/me", nil), &me)
 	if me.Username != "admin" || me.Role != "ADMIN" {
 		t.Fatalf("me: %+v", me)
@@ -337,7 +337,7 @@ func TestDemoReset(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := res.MachineKeys["VM-01"]
-	var login core.LoginResult
+	var login loginReply
 	e.mustOK(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin123"}, nil), &login)
 	e.admin = login.Token
 

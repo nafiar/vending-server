@@ -10,13 +10,10 @@ import (
 
 	"vending/internal/common/clock"
 	"vending/internal/model"
-	"vending/internal/repository/machine"
 	machinemock "vending/internal/repository/machine/mock"
-	"vending/internal/repository/slot"
 	slotmock "vending/internal/repository/slot/mock"
-	"vending/internal/repository/transaction"
 	transactionmock "vending/internal/repository/transaction/mock"
-	"vending/internal/repository/uow"
+	"vending/internal/repository/uow/uowtest"
 	"vending/internal/usecase/catalog"
 )
 
@@ -25,33 +22,26 @@ import (
 
 var t0 = time.Date(2026, 10, 22, 3, 0, 0, 0, time.UTC)
 
-// fakeUnit is a unit of work over mock repositories. Do and Read just call fn,
-// which is the behaviour a usecase may rely on: the bundle it is handed is
-// bound to one unit.
-type fakeUnit struct {
+// fixture is the usecase with every boundary mocked. The unit of work comes
+// from the shared test bundle, so adding a getter to uow.Tx does not break
+// tests that never reach for it.
+type fixture struct {
+	unit         *uowtest.Bundle
 	machines     *machinemock.MockRepository
 	slots        *slotmock.MockRepository
 	transactions *transactionmock.MockRepository
 }
 
-func (f *fakeUnit) Do(ctx context.Context, fn func(uow.Tx) error) error   { return fn(f) }
-func (f *fakeUnit) Read(ctx context.Context, fn func(uow.Tx) error) error { return fn(f) }
-
-func (f *fakeUnit) Machines() machine.Repository         { return f.machines }
-func (f *fakeUnit) Slots() slot.Repository               { return f.slots }
-func (f *fakeUnit) Transactions() transaction.Repository { return f.transactions }
-
-// Compile-time proof that the fake is a usable unit of work.
-var _ uow.Repository = (*fakeUnit)(nil)
-var _ uow.Tx = (*fakeUnit)(nil)
-
-func newUnit(t *testing.T) (*fakeUnit, *gomock.Controller) {
+func newFixture(t *testing.T, window time.Duration) (*fixture, catalog.UseCase, *gomock.Controller) {
 	ctrl := gomock.NewController(t)
-	return &fakeUnit{
+	f := &fixture{
 		machines:     machinemock.NewMockRepository(ctrl),
 		slots:        slotmock.NewMockRepository(ctrl),
 		transactions: transactionmock.NewMockRepository(ctrl),
-	}, ctrl
+	}
+	f.unit = &uowtest.Bundle{MachineRepo: f.machines, SlotRepo: f.slots, TransactionRepo: f.transactions}
+	uc := catalog.New(f.unit, f.machines, clock.New(func() time.Time { return t0 }), window, nil)
+	return f, uc, ctrl
 }
 
 func product(id int64, active bool) *model.Product {
@@ -79,15 +69,14 @@ func TestGetAppliesTheAvailabilityRule(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			unit, ctrl := newUnit(t)
+			f, uc, ctrl := newFixture(t, time.Minute)
 			defer ctrl.Finish()
-			unit.machines.EXPECT().Get(gomock.Any(), int64(9)).
+			f.machines.EXPECT().Get(gomock.Any(), int64(9)).
 				Return(model.MachineRecord{ID: 9, Code: "VM-01", Name: "Depan", IsActive: tc.machineActive, CatalogVersion: 12}, nil)
-			unit.slots.EXPECT().ListByMachine(gomock.Any(), int64(9)).Return([]model.Slot{tc.slot}, nil)
-			unit.transactions.EXPECT().CountOpenBySlot(gomock.Any(), int64(9), gomock.Any()).
+			f.slots.EXPECT().ListByMachine(gomock.Any(), int64(9)).Return([]model.Slot{tc.slot}, nil)
+			f.transactions.EXPECT().CountOpenBySlot(gomock.Any(), int64(9), gomock.Any()).
 				Return(map[int64]int{tc.slot.ID: tc.open}, nil)
 
-			uc := catalog.New(unit, unit.machines, clock.New(func() time.Time { return t0 }), time.Minute, nil)
 			got, err := uc.Get(context.Background(), model.Machine{ID: 9})
 			if err != nil {
 				t.Fatal(err)
@@ -108,13 +97,12 @@ func TestGetAppliesTheAvailabilityRule(t *testing.T) {
 // The payment window decides which PENDING transactions still hold an item, so
 // the cutoff the usecase passes down must be now minus that window (BR-06).
 func TestGetCountsOpenTransactionsFromTheWindowStart(t *testing.T) {
-	unit, ctrl := newUnit(t)
+	f, uc, ctrl := newFixture(t, 90*time.Second)
 	defer ctrl.Finish()
-	unit.machines.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.MachineRecord{ID: 9, IsActive: true}, nil)
-	unit.slots.EXPECT().ListByMachine(gomock.Any(), gomock.Any()).Return(nil, nil)
-	unit.transactions.EXPECT().CountOpenBySlot(gomock.Any(), int64(9), t0.Add(-90*time.Second)).Return(nil, nil)
+	f.machines.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.MachineRecord{ID: 9, IsActive: true}, nil)
+	f.slots.EXPECT().ListByMachine(gomock.Any(), gomock.Any()).Return(nil, nil)
+	f.transactions.EXPECT().CountOpenBySlot(gomock.Any(), int64(9), t0.Add(-90*time.Second)).Return(nil, nil)
 
-	uc := catalog.New(unit, unit.machines, clock.New(func() time.Time { return t0 }), 90*time.Second, nil)
 	if _, err := uc.Get(context.Background(), model.Machine{ID: 9}); err != nil {
 		t.Fatal(err)
 	}
@@ -123,13 +111,12 @@ func TestGetCountsOpenTransactionsFromTheWindowStart(t *testing.T) {
 // A repository failure is reported, never swallowed into an empty catalog: a
 // kiosk showing nothing looks like a sold-out machine.
 func TestGetReportsARepositoryFailure(t *testing.T) {
-	unit, ctrl := newUnit(t)
+	f, uc, ctrl := newFixture(t, time.Minute)
 	defer ctrl.Finish()
 	boom := errors.New("the slots table is unreachable")
-	unit.machines.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.MachineRecord{ID: 9, IsActive: true}, nil)
-	unit.slots.EXPECT().ListByMachine(gomock.Any(), gomock.Any()).Return(nil, boom)
+	f.machines.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.MachineRecord{ID: 9, IsActive: true}, nil)
+	f.slots.EXPECT().ListByMachine(gomock.Any(), gomock.Any()).Return(nil, boom)
 
-	uc := catalog.New(unit, unit.machines, clock.New(func() time.Time { return t0 }), time.Minute, nil)
 	if _, err := uc.Get(context.Background(), model.Machine{ID: 9}); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want the repository's", err)
 	}
@@ -138,13 +125,12 @@ func TestGetReportsARepositoryFailure(t *testing.T) {
 // Heartbeat records the contact before reporting the version (FR-28), so an
 // agent that polls is never recorded as absent.
 func TestHeartbeatRecordsContactThenReportsTheVersion(t *testing.T) {
-	unit, ctrl := newUnit(t)
+	f, uc, ctrl := newFixture(t, time.Minute)
 	defer ctrl.Finish()
-	touched := unit.machines.EXPECT().TouchSeen(gomock.Any(), int64(9), t0).Return(nil)
-	unit.machines.EXPECT().Get(gomock.Any(), int64(9)).After(touched).
+	touched := f.machines.EXPECT().TouchSeen(gomock.Any(), int64(9), t0).Return(nil)
+	f.machines.EXPECT().Get(gomock.Any(), int64(9)).After(touched).
 		Return(model.MachineRecord{ID: 9, CatalogVersion: 31}, nil)
 
-	uc := catalog.New(unit, unit.machines, clock.New(func() time.Time { return t0 }), time.Minute, nil)
 	hb, err := uc.Heartbeat(context.Background(), model.Machine{ID: 9})
 	if err != nil {
 		t.Fatal(err)

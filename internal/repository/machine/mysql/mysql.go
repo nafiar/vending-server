@@ -48,6 +48,14 @@ func (s *MySQL) Get(ctx context.Context, id int64) (model.MachineRecord, error) 
 	return m, err
 }
 
+func (s *MySQL) ByAPIKeyHash(ctx context.Context, keyHash string) (model.MachineRecord, error) {
+	m, err := scan(s.q.QueryRowContext(ctx, `SELECT `+columns+` FROM machines WHERE api_key_hash = ?`, keyHash))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.MachineRecord{}, model.ErrNoRecord
+	}
+	return m, err
+}
+
 func (s *MySQL) TouchSeen(ctx context.Context, id int64, at time.Time) error {
 	_, err := s.q.ExecContext(ctx, `UPDATE machines SET last_seen_at = ? WHERE id = ?`, at, id)
 	return err

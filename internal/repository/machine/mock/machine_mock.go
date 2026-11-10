@@ -56,6 +56,21 @@ func (mr *MockRepositoryMockRecorder) BumpCatalogVersion(ctx, id any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BumpCatalogVersion", reflect.TypeOf((*MockRepository)(nil).BumpCatalogVersion), ctx, id)
 }
 
+// ByAPIKeyHash mocks base method.
+func (m *MockRepository) ByAPIKeyHash(ctx context.Context, keyHash string) (model.MachineRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ByAPIKeyHash", ctx, keyHash)
+	ret0, _ := ret[0].(model.MachineRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ByAPIKeyHash indicates an expected call of ByAPIKeyHash.
+func (mr *MockRepositoryMockRecorder) ByAPIKeyHash(ctx, keyHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ByAPIKeyHash", reflect.TypeOf((*MockRepository)(nil).ByAPIKeyHash), ctx, keyHash)
+}
+
 // Get mocks base method.
 func (m *MockRepository) Get(ctx context.Context, id int64) (model.MachineRecord, error) {
 	m.ctrl.T.Helper()
