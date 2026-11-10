@@ -35,7 +35,7 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 			body["fields"] = e.Fields
 		}
 		for k, v := range e.Extra {
-			body[k] = v
+			body[k] = wireValue(v)
 		}
 		writeJSON(w, statusFor(e.Code), body)
 		return
@@ -51,6 +51,18 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 		"message":   "Terjadi kesalahan di server. Coba lagi.",
 		"requestId": rid,
 	})
+}
+
+// wireValue maps a domain value carried in an error's Extra to its wire shape.
+// CATALOG_STALE answers with the fresh catalog, and a model type has no JSON
+// field names of its own: those belong to this layer.
+func wireValue(v any) any {
+	switch x := v.(type) {
+	case model.Catalog:
+		return catalogView(x)
+	default:
+		return v
+	}
 }
 
 // decode reads a JSON body into dst. An empty body is allowed and leaves dst

@@ -42,64 +42,6 @@ func errSoldOut() *Error {
 
 func errTxNotFound() *Error { return errNotFound("Transaksi tidak ditemukan.") }
 
-// ---------------------------------------------------------------- catalog (UC-01)
-
-// GetCatalog is what the kiosk shows (FR-01): every slot with its product and
-// whether it can be bought now. available follows BR-04: the machine is active,
-// the slot has an active product, it is not blocked, and its count minus open
-// transactions (PENDING within the payment window, or PAID) is above zero.
-func (s *Service) GetCatalog(ctx context.Context, m Machine) (Catalog, error) {
-	// One read-only transaction gives the version and the slots from the same snapshot.
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	if err != nil {
-		return Catalog{}, err
-	}
-	defer tx.Rollback() //nolint:errcheck
-	c, err := s.catalog(ctx, tx, m.ID)
-	if err != nil {
-		return Catalog{}, err
-	}
-	return c, tx.Commit()
-}
-
-func (s *Service) catalog(ctx context.Context, q queryer, machineID int64) (Catalog, error) {
-	var c Catalog
-	var active bool
-	if err := q.QueryRowContext(ctx, `SELECT catalog_version, code, name, is_active FROM machines WHERE id = ?`, machineID).
-		Scan(&c.CatalogVersion, &c.Machine.Code, &c.Machine.Name, &active); err != nil {
-		return c, err
-	}
-	rows, err := q.QueryContext(ctx, `
-		SELECT s.slot_number, s.qty, s.needs_check, p.id, p.name, p.description, p.price, p.image_url, p.is_active,
-		       (SELECT COUNT(*) FROM transactions t
-		        WHERE t.slot_id = s.id AND (t.status = 'PAID' OR (t.status = 'PENDING' AND t.created_at > ?))) AS open
-		FROM slots s LEFT JOIN products p ON p.id = s.product_id
-		WHERE s.machine_id = ?
-		ORDER BY s.slot_number`, s.now().Add(-s.paymentWindow), machineID)
-	if err != nil {
-		return c, err
-	}
-	defer rows.Close()
-	c.Slots = []CatalogSlot{}
-	for rows.Next() {
-		var sl CatalogSlot
-		var qty, open int
-		var blocked bool
-		var pid, price sql.NullInt64
-		var name, desc, img sql.NullString
-		var pActive sql.NullBool
-		if err := rows.Scan(&sl.SlotNumber, &qty, &blocked, &pid, &name, &desc, &price, &img, &pActive, &open); err != nil {
-			return c, err
-		}
-		if pid.Valid {
-			sl.Product = &ProductBrief{ID: pid.Int64, Name: name.String, Description: desc.String, Price: price.Int64, ImageURL: nullString(img)}
-		}
-		sl.Available = active && pid.Valid && pActive.Bool && !blocked && qty-open > 0
-		c.Slots = append(c.Slots, sl)
-	}
-	return c, rows.Err()
-}
-
 // ---------------------------------------------------------------- create (UC-02, FR-04)
 
 // CreateTransactionInput is the body of POST /transactions.
@@ -269,10 +211,11 @@ func (s *Service) CreateTransaction(ctx context.Context, m Machine, in CreateTra
 		return CreatedTransaction{}, err
 	}
 	if stale {
-		fresh, err := s.GetCatalog(ctx, m)
+		fresh, err := s.catalog.Get(ctx, m)
 		if err != nil {
 			return CreatedTransaction{}, err
 		}
+		// The value is a model.Catalog; delivery maps it to its wire shape.
 		return CreatedTransaction{}, errConflict("CATALOG_STALE", "Info produk diperbarui.", map[string]any{"catalog": fresh})
 	}
 	return out, nil
@@ -486,18 +429,4 @@ func (s *Service) TransactionStatus(ctx context.Context, m Machine, id string) (
 		return TransactionState{}, err
 	}
 	return r.state(), nil
-}
-
-// Heartbeat records the agent's contact time (FR-28) and returns the current
-// catalog version, so the agent can reload early when an admin changed something.
-func (s *Service) Heartbeat(ctx context.Context, m Machine) (HeartbeatResult, error) {
-	now := s.now()
-	if _, err := s.db.ExecContext(ctx, `UPDATE machines SET last_seen_at = ? WHERE id = ?`, now, m.ID); err != nil {
-		return HeartbeatResult{}, err
-	}
-	var v int64
-	if err := s.db.QueryRowContext(ctx, `SELECT catalog_version FROM machines WHERE id = ?`, m.ID).Scan(&v); err != nil {
-		return HeartbeatResult{}, err
-	}
-	return HeartbeatResult{OK: true, ServerTime: ms(now), CatalogVersion: v}, nil
 }

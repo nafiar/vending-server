@@ -28,12 +28,12 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"vending/internal/app"
 	"vending/internal/common/config"
 	"vending/internal/common/logx"
 	"vending/internal/common/security"
 	"vending/internal/core"
 	"vending/internal/httpapi"
-	"vending/internal/repository/imagestore/local"
 	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 	"vending/web"
@@ -98,16 +98,19 @@ func run(args []string) error {
 	}
 }
 
-type app struct {
-	cfg config.Config
-	log *slog.Logger
-	db  *sql.DB
-	svc *core.Service
+// instance is one opened server: the settings, the logger, the pool and the
+// dependency graph built over them.
+type instance struct {
+	cfg  config.Config
+	log  *slog.Logger
+	db   *sql.DB
+	svc  *core.Service
+	deps app.Deps
 }
 
 // open loads the settings, connects to MySQL and, unless AUTO_MIGRATE=false,
 // creates the database and applies pending migrations first.
-func open(ctx context.Context, forceMigrate bool) (*app, error) {
+func open(ctx context.Context, forceMigrate bool) (*instance, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
@@ -131,15 +134,17 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 			return nil, err
 		}
 	}
+	d := app.Wire(db, cfg, log, nil)
 	svc := core.New(db, core.Options{
 		Location:      cfg.Location,
-		Images:        local.New(cfg.UploadDir),
+		Images:        d.Images,
+		Catalog:       d.Catalog,
 		AdminIdle:     cfg.AdminIdle,
 		OperatorIdle:  cfg.OperatorIdle,
 		PaymentWindow: cfg.PaymentWindow,
 		Logger:        log,
 	})
-	return &app{cfg: cfg, log: log, db: db, svc: svc}, nil
+	return &instance{cfg: cfg, log: log, db: db, svc: svc, deps: d}, nil
 }
 
 // ---------------------------------------------------------------- serve
@@ -184,7 +189,7 @@ func serve(args []string) error {
 	}
 	srv := &http.Server{
 		Addr:              a.cfg.HTTPAddr,
-		Handler:           httpapi.New(a.svc, web.Admin(), a.log, opts),
+		Handler:           httpapi.New(a.svc, a.deps.UseCases(), web.Admin(), a.log, opts),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,

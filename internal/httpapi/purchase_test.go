@@ -348,7 +348,7 @@ func TestTC33_LastContact(t *testing.T) {
 	if m := e.machineView(mid); *m.LastSeenAt != t0.UnixMilli() {
 		t.Fatalf("last contact should still be the setup time: %d", *m.LastSeenAt)
 	}
-	var hb core.HeartbeatResult
+	var hb heartbeatReply
 	e.mustOK(e.asMachine(key, "POST", "/api/machine/heartbeat", nil), &hb)
 	if !hb.OK || hb.CatalogVersion == 0 {
 		t.Fatalf("heartbeat: %+v", hb)

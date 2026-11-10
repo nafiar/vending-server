@@ -239,18 +239,6 @@ type MachineInfo struct {
 	Name string `json:"name"`
 }
 
-type CatalogSlot struct {
-	SlotNumber int           `json:"slotNumber"`
-	Available  bool          `json:"available"`
-	Product    *ProductBrief `json:"product"`
-}
-
-type Catalog struct {
-	CatalogVersion int64         `json:"catalogVersion"`
-	Machine        MachineInfo   `json:"machine"`
-	Slots          []CatalogSlot `json:"slots"`
-}
-
 type CreatedTransaction struct {
 	ID               string       `json:"id"`
 	SlotNumber       int          `json:"slotNumber"`
@@ -286,10 +274,4 @@ type RestockSaved struct {
 	SessionID      int64  `json:"sessionId"`
 	SavedAt        int64  `json:"savedAt"`
 	CatalogVersion int64  `json:"catalogVersion"`
-}
-
-type HeartbeatResult struct {
-	OK             bool  `json:"ok"`
-	ServerTime     int64 `json:"serverTime"`
-	CatalogVersion int64 `json:"catalogVersion"`
 }

@@ -11,11 +11,19 @@ import (
 // (kiosk/README.md) to these paths, and reports dispense results itself.
 
 func (s *Server) catalog(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	return s.svc.GetCatalog(r.Context(), m)
+	c, err := s.uc.Catalog.Get(r.Context(), m)
+	if err != nil {
+		return nil, err
+	}
+	return catalogView(c), nil
 }
 
 func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {
-	return s.svc.Heartbeat(r.Context(), m)
+	h, err := s.uc.Catalog.Heartbeat(r.Context(), m)
+	if err != nil {
+		return nil, err
+	}
+	return heartbeatView(h), nil
 }
 
 func (s *Server) createTransaction(w http.ResponseWriter, r *http.Request, m core.Machine) (any, error) {

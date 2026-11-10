@@ -17,15 +17,25 @@ import (
 	"time"
 
 	"vending/internal/core"
+	"vending/internal/usecase/catalog"
 )
 
-// Server routes requests to the service.
+// Server routes requests to the usecases.
 type Server struct {
 	svc  *core.Service
+	uc   UseCases
 	log  *slog.Logger
 	mux  *http.ServeMux
 	web  fs.FS
 	opts Options
+}
+
+// UseCases are the usecase ports this layer depends on. cmd/vending-server
+// builds the concrete ones and injects them, and a handler test passes mocks.
+// It grows as each slice moves out of core, and when core is empty it is the
+// only dependency left (docs/REARCHITECTURE.md).
+type UseCases struct {
+	Catalog catalog.UseCase
 }
 
 // Options are the server's settings and optional features.
@@ -40,8 +50,8 @@ type Options struct {
 }
 
 // New returns the HTTP handler. web holds the admin web files (index.html at its root).
-func New(svc *core.Service, web fs.FS, log *slog.Logger, opts Options) http.Handler {
-	s := &Server{svc: svc, log: log, mux: http.NewServeMux(), web: web, opts: opts}
+func New(svc *core.Service, uc UseCases, web fs.FS, log *slog.Logger, opts Options) http.Handler {
+	s := &Server{svc: svc, uc: uc, log: log, mux: http.NewServeMux(), web: web, opts: opts}
 	s.routes()
 	return s.withMiddleware(http.HandlerFunc(s.dispatch))
 }

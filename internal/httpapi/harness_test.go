@@ -19,11 +19,11 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
+	"vending/internal/app"
 	"vending/internal/common/config"
 	"vending/internal/common/security"
 	"vending/internal/core"
 	"vending/internal/httpapi"
-	"vending/internal/repository/imagestore/local"
 	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 )
@@ -97,9 +97,13 @@ func newEnv(t *testing.T) *env {
 
 	clock := &fakeClock{t: t0}
 	uploads := t.TempDir()
-	svc := core.New(db, core.Options{Location: jakarta, Images: local.New(uploads), Now: clock.Now, Logger: log})
+	// The graph is built by the same function the binary uses, so these tests
+	// exercise the wiring that ships.
+	cfg := config.Config{Location: jakarta, UploadDir: uploads, PaymentWindow: 60 * time.Second}
+	deps := app.Wire(db, cfg, log, clock.Now)
+	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Catalog: deps.Catalog, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
-	srv := httptest.NewServer(httpapi.New(svc, web, log, httpapi.Options{
+	srv := httptest.NewServer(httpapi.New(svc, deps.UseCases(), web, log, httpapi.Options{
 		UploadDir: uploads,
 		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
 	}))
@@ -276,9 +280,38 @@ func lower(s string) string {
 	return string(b)
 }
 
-func (e *env) catalog(key string) core.Catalog {
+// catalogReply is the catalog as the kiosk reads it. The tests declare the
+// shape they expect instead of importing a production type, so moving a type
+// between layers cannot quietly change what they assert.
+type catalogReply struct {
+	CatalogVersion int64 `json:"catalogVersion"`
+	Machine        struct {
+		Code string `json:"code"`
+		Name string `json:"name"`
+	} `json:"machine"`
+	Slots []struct {
+		SlotNumber int  `json:"slotNumber"`
+		Available  bool `json:"available"`
+		Product    *struct {
+			ID          int64   `json:"id"`
+			Name        string  `json:"name"`
+			Description string  `json:"description"`
+			Price       int64   `json:"price"`
+			ImageURL    *string `json:"imageUrl"`
+		} `json:"product"`
+	} `json:"slots"`
+}
+
+// heartbeatReply is what the agent reads from a heartbeat.
+type heartbeatReply struct {
+	OK             bool  `json:"ok"`
+	ServerTime     int64 `json:"serverTime"`
+	CatalogVersion int64 `json:"catalogVersion"`
+}
+
+func (e *env) catalog(key string) catalogReply {
 	e.t.Helper()
-	var c core.Catalog
+	var c catalogReply
 	e.mustOK(e.asMachine(key, "GET", "/api/machine/catalog", nil), &c)
 	return c
 }

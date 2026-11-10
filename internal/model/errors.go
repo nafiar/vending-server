@@ -36,6 +36,12 @@ const (
 	CodeInternal          = "INTERNAL"
 )
 
+// ErrNoRecord is what a repository returns when the row asked for is not
+// there. A usecase turns it into the message its story needs ("Transaksi tidak
+// ditemukan.", "Slot tidak ditemukan."), so the wording stays with the rule and
+// no repository writes screen text.
+var ErrNoRecord = errors.New("no such record")
+
 // Error is a failure the API reports as JSON: {"code", "message", "fields"?,
 // ...Extra}. Messages are in Bahasa Indonesia because the screens show them as
 // they are. An error that is not an *Error is a server fault, reported as

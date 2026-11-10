@@ -18,12 +18,14 @@ import (
 	"vending/internal/common/clock"
 	"vending/internal/repository/imagestore"
 	"vending/internal/repository/mysqldb"
+	"vending/internal/usecase/catalog"
 )
 
 // Options configure a Service.
 type Options struct {
 	Location      *time.Location        // calendar days and hours for recaps; Asia/Jakarta (WIB)
 	Images        imagestore.Repository // where product images are stored
+	Catalog       catalog.UseCase       // for the fresh catalog a stale purchase is refused with
 	AdminIdle     time.Duration         // admin session idle timeout (BR-13: 30 min)
 	OperatorIdle  time.Duration         // operator session idle timeout (BR-13: 2 min)
 	PaymentWindow time.Duration         // how long a PENDING transaction can be paid (BR-06: 60 s)
@@ -37,6 +39,7 @@ type Service struct {
 	tx            *mysqldb.Runner
 	loc           *time.Location
 	images        imagestore.Repository
+	catalog       catalog.UseCase
 	adminIdle     time.Duration
 	operatorIdle  time.Duration
 	paymentWindow time.Duration
@@ -51,6 +54,7 @@ func New(db *sql.DB, o Options) *Service {
 		tx:            mysqldb.NewRunner(db, o.Logger),
 		loc:           o.Location,
 		images:        o.Images,
+		catalog:       o.Catalog,
 		adminIdle:     o.AdminIdle,
 		operatorIdle:  o.OperatorIdle,
 		paymentWindow: o.PaymentWindow,

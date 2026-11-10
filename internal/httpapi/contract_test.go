@@ -331,7 +331,7 @@ func TestAPIContract(t *testing.T) {
 }
 
 // firstAvailable returns a slot number the kiosk can sell right now.
-func firstAvailable(t *testing.T, c core.Catalog) int {
+func firstAvailable(t *testing.T, c catalogReply) int {
 	t.Helper()
 	for _, s := range c.Slots {
 		if s.Available {
