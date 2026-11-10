@@ -1,5 +1,10 @@
-// Package database opens the MySQL connection pool and applies the schema migrations.
-package database
+// Package mysqldb is the shared MySQL infrastructure every repository adapter
+// sits on: the connection pool, the schema migrations, the transaction runner
+// that retries what InnoDB aborts, and the scan helpers.
+//
+// It holds no business rule. A rule lives in a usecase; the SQL that serves it
+// lives in a repository adapter, which takes a Queryer from here.
+package mysqldb
 
 import (
 	"context"
@@ -9,6 +14,8 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,9 +29,57 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
+// dbNamePattern guards the one identifier that cannot be a placeholder: the
+// database name, which CREATE DATABASE takes inside backticks.
+var dbNamePattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
+
+// driverConfig turns the settings into the driver's configuration. withDB=false
+// leaves the database name out, for creating the database itself.
+func driverConfig(d config.DBConfig, withDB bool) (*mysql.Config, error) {
+	var mc *mysql.Config
+	if d.DSN != "" {
+		var err error
+		if mc, err = mysql.ParseDSN(d.DSN); err != nil {
+			return nil, fmt.Errorf("DB_DSN: %w", err)
+		}
+	} else {
+		mc = mysql.NewConfig()
+		mc.User = d.User
+		mc.Passwd = d.Password
+		mc.Net = "tcp"
+		mc.Addr = net.JoinHostPort(d.Host, d.Port)
+		mc.DBName = d.Name
+	}
+	if !withDB {
+		mc.DBName = ""
+	}
+	// Times are stored and compared in UTC (NFR-05); the server converts to WIB
+	// for display and grouping.
+	mc.ParseTime = true
+	mc.Loc = time.UTC
+	if mc.Params == nil {
+		mc.Params = map[string]string{}
+	}
+	mc.Params["time_zone"] = "'+00:00'"
+	mc.Collation = "utf8mb4_unicode_ci"
+	return mc, nil
+}
+
+// DatabaseName is the schema the server uses.
+func DatabaseName(d config.DBConfig) (string, error) {
+	mc, err := driverConfig(d, true)
+	if err != nil {
+		return "", err
+	}
+	if !dbNamePattern.MatchString(mc.DBName) {
+		return "", fmt.Errorf("database name %q: use letters, digits and underscores only", mc.DBName)
+	}
+	return mc.DBName, nil
+}
+
 // Open connects to the configured database and checks that it answers.
 func Open(ctx context.Context, dbc config.DBConfig) (*sql.DB, error) {
-	mc, err := dbc.MySQL(true)
+	mc, err := driverConfig(dbc, true)
 	if err != nil {
 		return nil, err
 	}
@@ -50,11 +105,11 @@ func Open(ctx context.Context, dbc config.DBConfig) (*sql.DB, error) {
 // EnsureDatabase creates the database if it does not exist yet. It needs the
 // CREATE privilege; when the database already exists it does nothing.
 func EnsureDatabase(ctx context.Context, dbc config.DBConfig) error {
-	name, err := dbc.DatabaseName()
+	name, err := DatabaseName(dbc)
 	if err != nil {
 		return err
 	}
-	mc, err := dbc.MySQL(false)
+	mc, err := driverConfig(dbc, false)
 	if err != nil {
 		return err
 	}

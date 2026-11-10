@@ -51,9 +51,20 @@ func TestDependencyRule(t *testing.T) {
 	}
 }
 
+// legacy names the rearchitecture is dismantling (docs/REARCHITECTURE.md).
+// Nothing in a finished layer may import them, or the migration would gain a
+// new dependency on the very package it is emptying.
+var legacy = map[string]bool{"core": true, "httpapi": true, "seed": true}
+
 func forbidden(layer, target string) string {
 	parts := strings.Split(target, "/")
 	to := parts[0]
+	if legacy[to] {
+		switch layer {
+		case "model", "common", "repository", "usecase", "delivery":
+			return "it is being dismantled: take what you need from model, or finish the slice that owns it"
+		}
+	}
 	switch layer {
 	case "model":
 		return "model imports nothing internal"

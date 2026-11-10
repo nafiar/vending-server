@@ -13,19 +13,20 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strings"
 	"time"
 
 	"vending/internal/common/clock"
+	"vending/internal/repository/imagestore"
+	"vending/internal/repository/mysqldb"
 )
 
 // Options configure a Service.
 type Options struct {
-	Location      *time.Location // calendar days and hours for recaps; Asia/Jakarta (WIB)
-	UploadDir     string         // where product images are written
-	AdminIdle     time.Duration  // admin session idle timeout (BR-13: 30 min)
-	OperatorIdle  time.Duration  // operator session idle timeout (BR-13: 2 min)
-	PaymentWindow time.Duration  // how long a PENDING transaction can be paid (BR-06: 60 s)
+	Location      *time.Location        // calendar days and hours for recaps; Asia/Jakarta (WIB)
+	Images        imagestore.Repository // where product images are stored
+	AdminIdle     time.Duration         // admin session idle timeout (BR-13: 30 min)
+	OperatorIdle  time.Duration         // operator session idle timeout (BR-13: 2 min)
+	PaymentWindow time.Duration         // how long a PENDING transaction can be paid (BR-06: 60 s)
 	Now           func() time.Time
 	Logger        *slog.Logger
 }
@@ -33,8 +34,9 @@ type Options struct {
 // Service implements the use cases.
 type Service struct {
 	db            *sql.DB
+	tx            *mysqldb.Runner
 	loc           *time.Location
-	uploadDir     string
+	images        imagestore.Repository
 	adminIdle     time.Duration
 	operatorIdle  time.Duration
 	paymentWindow time.Duration
@@ -46,8 +48,9 @@ type Service struct {
 func New(db *sql.DB, o Options) *Service {
 	s := &Service{
 		db:            db,
+		tx:            mysqldb.NewRunner(db, o.Logger),
 		loc:           o.Location,
-		uploadDir:     o.UploadDir,
+		images:        o.Images,
 		adminIdle:     o.AdminIdle,
 		operatorIdle:  o.OperatorIdle,
 		paymentWindow: o.PaymentWindow,
@@ -56,9 +59,6 @@ func New(db *sql.DB, o Options) *Service {
 	}
 	if s.loc == nil {
 		s.loc, _ = time.LoadLocation("Asia/Jakarta")
-	}
-	if s.uploadDir == "" {
-		s.uploadDir = "data/uploads"
 	}
 	if s.adminIdle <= 0 {
 		s.adminIdle = 30 * time.Minute
@@ -81,9 +81,6 @@ func (s *Service) DB() *sql.DB { return s.db }
 // Location is the time zone used for calendar days.
 func (s *Service) Location() *time.Location { return s.loc }
 
-// UploadDir is where product images live.
-func (s *Service) UploadDir() string { return s.uploadDir }
-
 // now is the current time in UTC, cut to the milliseconds DATETIME(3) stores.
 func (s *Service) now() time.Time { return s.clock.Now() }
 
@@ -93,80 +90,21 @@ func (s *Service) Now() time.Time { return s.now() }
 // Ping checks the database, for the health endpoint.
 func (s *Service) Ping(ctx context.Context) error { return s.db.PingContext(ctx) }
 
-// withTx runs fn in a database transaction and commits it when fn returns nil.
-// InnoDB may abort one of two transactions that lock the same rows in opposite
-// order (a deadlock) or time out on a lock; both are retried, so fn must not
-// keep state from a failed attempt.
+// withTx runs fn in one database transaction. The retry InnoDB needs lives in
+// mysqldb.Runner, not in a business rule.
 func (s *Service) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
-	for attempt := 1; ; attempt++ {
-		err := s.runTx(ctx, fn)
-		if err != nil && attempt < 4 && (isMySQLError(err, mysqlDeadlock) || isMySQLError(err, mysqlLockWait)) {
-			s.log.Warn("retrying database transaction", "attempt", attempt, "err", err)
-			time.Sleep(time.Duration(attempt*25) * time.Millisecond)
-			continue
-		}
-		return err
-	}
-}
-
-func (s *Service) runTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint:errcheck // a no-op once committed
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return s.tx.Do(ctx, fn)
 }
 
 // ---------------------------------------------------------------- small helpers
 
-func ms(t time.Time) int64 { return t.UnixMilli() }
+// These forward to mysqldb so there is one implementation; the call sites move
+// to the repository adapters as each slice lands.
 
-func nullMs(t sql.NullTime) *int64 {
-	if !t.Valid {
-		return nil
-	}
-	v := t.Time.UnixMilli()
-	return &v
-}
-
-func nullString(s sql.NullString) *string {
-	if !s.Valid {
-		return nil
-	}
-	v := s.String
-	return &v
-}
-
-func nullInt(n sql.NullInt64) *int64 {
-	if !n.Valid {
-		return nil
-	}
-	v := n.Int64
-	return &v
-}
-
-func strOrNil(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
-}
-
-func placeholders(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	return strings.Repeat("?,", n-1) + "?"
-}
-
-func int64sToArgs(ids []int64) []any {
-	out := make([]any, len(ids))
-	for i, v := range ids {
-		out[i] = v
-	}
-	return out
-}
+func ms(t time.Time) int64                { return mysqldb.Ms(t) }
+func nullMs(t sql.NullTime) *int64        { return mysqldb.NullMs(t) }
+func nullString(s sql.NullString) *string { return mysqldb.NullString(s) }
+func nullInt(n sql.NullInt64) *int64      { return mysqldb.NullInt(n) }
+func strOrNil(s string) any               { return mysqldb.StrOrNil(s) }
+func placeholders(n int) string           { return mysqldb.Placeholders(n) }
+func int64sToArgs(ids []int64) []any      { return mysqldb.Args(ids) }

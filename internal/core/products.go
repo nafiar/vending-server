@@ -10,14 +10,10 @@ import (
 	"unicode/utf8"
 
 	"vending/internal/common/imagex"
+	"vending/internal/repository/mysqldb"
 )
 
-// queryer is what *sql.DB and *sql.Tx have in common.
-type queryer interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-}
+type queryer = mysqldb.Queryer
 
 // ProductInput is the body of POST /admin/products and PUT /admin/products/{id}.
 type ProductInput struct {
@@ -119,7 +115,7 @@ func (s *Service) ListProducts(ctx context.Context, includeArchived bool) ([]Pro
 	return out, nil
 }
 
-type rowScanner interface{ Scan(dest ...any) error }
+type rowScanner = mysqldb.RowScanner
 
 func scanProduct(r rowScanner) (ProductView, error) {
 	var p ProductView

@@ -22,8 +22,9 @@ import (
 	"vending/internal/common/config"
 	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/database"
 	"vending/internal/httpapi"
+	"vending/internal/repository/imagestore/local"
+	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 )
 
@@ -79,10 +80,10 @@ func newEnv(t *testing.T) *env {
 
 	ctx := context.Background()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if err := database.EnsureDatabase(ctx, dbc); err != nil {
+	if err := mysqldb.EnsureDatabase(ctx, dbc); err != nil {
 		t.Fatal(err)
 	}
-	db, err := database.Open(ctx, dbc)
+	db, err := mysqldb.Open(ctx, dbc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,14 +91,16 @@ func newEnv(t *testing.T) *env {
 		_, _ = db.Exec("DROP DATABASE `" + mc.DBName + "`")
 		db.Close()
 	})
-	if _, err := database.Migrate(ctx, db, log); err != nil {
+	if _, err := mysqldb.Migrate(ctx, db, log); err != nil {
 		t.Fatal(err)
 	}
 
 	clock := &fakeClock{t: t0}
-	svc := core.New(db, core.Options{Location: jakarta, UploadDir: t.TempDir(), Now: clock.Now, Logger: log})
+	uploads := t.TempDir()
+	svc := core.New(db, core.Options{Location: jakarta, Images: local.New(uploads), Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
 	srv := httptest.NewServer(httpapi.New(svc, web, log, httpapi.Options{
+		UploadDir: uploads,
 		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
 	}))
 	t.Cleanup(srv.Close)

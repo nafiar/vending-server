@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"vending/internal/common/security"
+	"vending/internal/repository/mysqldb"
 )
 
 // MachineInput is the body of POST /admin/machines.
@@ -244,7 +245,7 @@ func (s *Service) CreateMachine(ctx context.Context, actor Principal, in Machine
 			INSERT INTO machines (code, name, location, api_key_hash, catalog_version, is_active, created_at)
 			VALUES (?, ?, ?, ?, 1, TRUE, ?)`, code, name, strOrNil(location), security.HashToken(key), s.now())
 		if err != nil {
-			if isMySQLError(err, mysqlDuplicateKey) {
+			if mysqldb.IsDuplicateKey(err) {
 				return fieldErrors{"code": "Kode " + code + " sudah dipakai."}.Err()
 			}
 			return err

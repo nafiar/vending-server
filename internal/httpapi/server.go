@@ -28,8 +28,12 @@ type Server struct {
 	opts Options
 }
 
-// Options are optional features.
+// Options are the server's settings and optional features.
 type Options struct {
+	// UploadDir is where product images are stored; the server serves them at
+	// /uploads/.
+	UploadDir string
+
 	// DemoReset, when set, enables POST /api/admin/demo/reset: delete every row and
 	// load the demo data again. Only for demo servers (DEMO_MODE=true).
 	DemoReset func(ctx context.Context) error
@@ -90,7 +94,7 @@ func (s *Server) routes() {
 	m.Handle("POST /api/machine/restock-sessions", s.operatorOnly(s.saveRestock))
 
 	// Files.
-	m.Handle("GET /uploads/", http.StripPrefix("/uploads/", uploadsHandler(s.svc.UploadDir())))
+	m.Handle("GET /uploads/", http.StripPrefix("/uploads/", uploadsHandler(s.opts.UploadDir)))
 	m.Handle("GET /", s.static())
 }
 

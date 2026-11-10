@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"vending/internal/common/security"
+	"vending/internal/repository/mysqldb"
 )
 
 // OperatorInput is the body of POST /admin/operators.
@@ -127,7 +128,7 @@ func (s *Service) CreateOperator(ctx context.Context, actor Principal, in Operat
 		res, err := tx.ExecContext(ctx, `INSERT INTO users (name, username, password_hash, role, is_active, created_at) VALUES (?, ?, ?, 'OPERATOR', TRUE, ?)`,
 			name, username, hash, s.now())
 		if err != nil {
-			if isMySQLError(err, mysqlDuplicateKey) {
+			if mysqldb.IsDuplicateKey(err) {
 				return fieldErrors{"username": "Username sudah dipakai."}.Err()
 			}
 			return err
@@ -238,7 +239,7 @@ func (s *Service) CreateAdmin(ctx context.Context, name, username, password stri
 	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO users (name, username, password_hash, role, is_active, created_at) VALUES (?, ?, ?, 'ADMIN', TRUE, ?)`,
 		name, username, hash, s.now())
-	if isMySQLError(err, mysqlDuplicateKey) {
+	if mysqldb.IsDuplicateKey(err) {
 		return 0, fieldErrors{"username": "username " + username + " already exists"}.Err()
 	}
 	if err != nil {

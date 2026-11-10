@@ -1,10 +1,6 @@
 package core
 
 import (
-	"errors"
-
-	"github.com/go-sql-driver/mysql"
-
 	"vending/internal/model"
 )
 
@@ -36,15 +32,3 @@ func invalidInput(msg string, fields map[string]string) *Error {
 
 // fieldErrors collects validation messages per field.
 type fieldErrors = model.FieldErrors
-
-// MySQL error numbers the service reacts to.
-const (
-	mysqlDuplicateKey = 1062
-	mysqlLockWait     = 1205
-	mysqlDeadlock     = 1213
-)
-
-func isMySQLError(err error, number uint16) bool {
-	var me *mysql.MySQLError
-	return errors.As(err, &me) && me.Number == number
-}

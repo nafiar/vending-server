@@ -4,15 +4,12 @@ package config
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata" // Windows has no zoneinfo database; embed it so Asia/Jakarta always loads.
-
-	"github.com/go-sql-driver/mysql"
 )
 
 // Config holds every setting the server reads at start-up.
@@ -95,49 +92,6 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("DB_NAME %q: use letters, digits and underscores only", c.DB.Name)
 	}
 	return c, nil
-}
-
-// MySQL returns the driver configuration. withDB=false leaves the database name
-// out, for creating the database itself.
-func (d DBConfig) MySQL(withDB bool) (*mysql.Config, error) {
-	var mc *mysql.Config
-	if d.DSN != "" {
-		var err error
-		if mc, err = mysql.ParseDSN(d.DSN); err != nil {
-			return nil, fmt.Errorf("DB_DSN: %w", err)
-		}
-	} else {
-		mc = mysql.NewConfig()
-		mc.User = d.User
-		mc.Passwd = d.Password
-		mc.Net = "tcp"
-		mc.Addr = net.JoinHostPort(d.Host, d.Port)
-		mc.DBName = d.Name
-	}
-	if !withDB {
-		mc.DBName = ""
-	}
-	// Times are stored and compared in UTC (NFR-05); the server converts to WIB for display and grouping.
-	mc.ParseTime = true
-	mc.Loc = time.UTC
-	if mc.Params == nil {
-		mc.Params = map[string]string{}
-	}
-	mc.Params["time_zone"] = "'+00:00'"
-	mc.Collation = "utf8mb4_unicode_ci"
-	return mc, nil
-}
-
-// DatabaseName is the schema the server uses.
-func (d DBConfig) DatabaseName() (string, error) {
-	mc, err := d.MySQL(true)
-	if err != nil {
-		return "", err
-	}
-	if !dbNamePattern.MatchString(mc.DBName) {
-		return "", fmt.Errorf("database name %q: use letters, digits and underscores only", mc.DBName)
-	}
-	return mc.DBName, nil
 }
 
 func env(key, def string) string {

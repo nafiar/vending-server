@@ -32,8 +32,9 @@ import (
 	"vending/internal/common/logx"
 	"vending/internal/common/security"
 	"vending/internal/core"
-	"vending/internal/database"
 	"vending/internal/httpapi"
+	"vending/internal/repository/imagestore/local"
+	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 	"vending/web"
 )
@@ -115,9 +116,9 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 	var ensureErr error
 	if cfg.AutoMigrate || forceMigrate {
 		// Needs the CREATE privilege; a database created beforehand by a DBA works too.
-		ensureErr = database.EnsureDatabase(ctx, cfg.DB)
+		ensureErr = mysqldb.EnsureDatabase(ctx, cfg.DB)
 	}
-	db, err := database.Open(ctx, cfg.DB)
+	db, err := mysqldb.Open(ctx, cfg.DB)
 	if err != nil {
 		if ensureErr != nil {
 			return nil, ensureErr
@@ -125,14 +126,14 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 		return nil, err
 	}
 	if cfg.AutoMigrate || forceMigrate {
-		if _, err := database.Migrate(ctx, db, log); err != nil {
+		if _, err := mysqldb.Migrate(ctx, db, log); err != nil {
 			db.Close()
 			return nil, err
 		}
 	}
 	svc := core.New(db, core.Options{
 		Location:      cfg.Location,
-		UploadDir:     cfg.UploadDir,
+		Images:        local.New(cfg.UploadDir),
 		AdminIdle:     cfg.AdminIdle,
 		OperatorIdle:  cfg.OperatorIdle,
 		PaymentWindow: cfg.PaymentWindow,
@@ -173,7 +174,7 @@ func serve(args []string) error {
 	}
 	go a.svc.RunJobs(ctx)
 
-	var opts httpapi.Options
+	opts := httpapi.Options{UploadDir: a.cfg.UploadDir}
 	if a.cfg.DemoMode {
 		opts.DemoReset = func(ctx context.Context) error {
 			_, err := seed.Demo(ctx, a.svc, true)
@@ -229,8 +230,8 @@ func migrateCmd(args []string) error {
 		return err
 	}
 	log := logx.New(cfg.LogFormat, cfg.LogLevel)
-	ensureErr := database.EnsureDatabase(ctx, cfg.DB)
-	db, err := database.Open(ctx, cfg.DB)
+	ensureErr := mysqldb.EnsureDatabase(ctx, cfg.DB)
+	db, err := mysqldb.Open(ctx, cfg.DB)
 	if err != nil {
 		if ensureErr != nil {
 			return ensureErr
@@ -238,11 +239,11 @@ func migrateCmd(args []string) error {
 		return err
 	}
 	defer db.Close()
-	applied, err := database.Migrate(ctx, db, log)
+	applied, err := mysqldb.Migrate(ctx, db, log)
 	if err != nil {
 		return err
 	}
-	name, _ := cfg.DB.DatabaseName()
+	name, _ := mysqldb.DatabaseName(cfg.DB)
 	if len(applied) == 0 {
 		fmt.Printf("Database %q is up to date.\n", name)
 	} else {

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"vending/internal/repository/mysqldb"
 )
 
 // ---------------------------------------------------------------- admin: restock history (UC-10)
@@ -292,7 +294,7 @@ func (s *Service) SaveRestock(ctx context.Context, m Machine, p Principal, in Re
 			INSERT INTO restock_sessions (client_id, machine_id, user_id, started_at, finished_at, note)
 			VALUES (?, ?, ?, ?, ?, ?)`, clientID, m.ID, p.UserID, p.StartedAt, finishedAt, strOrNil(strings.TrimSpace(in.Note)))
 		if err != nil {
-			if isMySQLError(err, mysqlDuplicateKey) {
+			if mysqldb.IsDuplicateKey(err) {
 				return errConflict("CONFLICT", "Kunjungan ini sedang disimpan. Coba lagi.", nil)
 			}
 			return err

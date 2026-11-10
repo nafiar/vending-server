@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
 )
 
 // The purchase state machine (PRD, "Purchase sequence and transaction states"):
@@ -261,7 +262,7 @@ func (s *Service) CreateTransaction(ctx context.Context, m Machine, in CreateTra
 		})
 	}
 	err := attempt()
-	if isMySQLError(err, mysqlDuplicateKey) {
+	if mysqldb.IsDuplicateKey(err) {
 		err = attempt() // the same id was created concurrently; the retry finds it
 	}
 	if err != nil {
