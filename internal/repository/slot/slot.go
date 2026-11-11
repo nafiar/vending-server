@@ -43,6 +43,14 @@ type Repository interface {
 	// than deadlock. The machine is locked first (see repository/machine).
 	LockAllByMachine(ctx context.Context, machineID int64) ([]model.Slot, error)
 
+	// MachineIDsHolding returns the ids of the machines that have this product
+	// loaded in a slot right now, so their kiosks can be told to reload after
+	// its price or name changed (BR-09, TC-10).
+	//
+	// Slots that only plan the product are left out: nothing is selling at that
+	// price yet.
+	MachineIDsHolding(ctx context.Context, productID int64) ([]int64, error)
+
 	// Restock sets what a slot holds and how many are in it, clears any planned
 	// product change, and unblocks the slot: everything an operator's visit
 	// decides about one slot, in one statement, because they are one fact

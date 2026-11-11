@@ -5,15 +5,19 @@ import (
 	"context"
 	"database/sql"
 
+	auditmysql "vending/internal/repository/audit/mysql"
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	productmysql "vending/internal/repository/product/mysql"
 	restockmysql "vending/internal/repository/restock/mysql"
 	slotmysql "vending/internal/repository/slot/mysql"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
 	usermysql "vending/internal/repository/user/mysql"
 
+	"vending/internal/repository/audit"
 	"vending/internal/repository/machine"
+	"vending/internal/repository/product"
 	"vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
@@ -49,3 +53,5 @@ func (b bundle) Slots() slot.Repository               { return slotmysql.New(b.q
 func (b bundle) Transactions() transaction.Repository { return transactionmysql.New(b.q) }
 func (b bundle) Users() user.Repository               { return usermysql.New(b.q) }
 func (b bundle) Restocks() restock.Repository         { return restockmysql.New(b.q) }
+func (b bundle) Products() product.Repository         { return productmysql.New(b.q) }
+func (b bundle) Audit() audit.Repository              { return auditmysql.New(b.q) }

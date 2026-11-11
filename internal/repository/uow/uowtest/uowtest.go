@@ -16,7 +16,9 @@ package uowtest
 import (
 	"context"
 
+	"vending/internal/repository/audit"
 	"vending/internal/repository/machine"
+	"vending/internal/repository/product"
 	"vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
@@ -34,6 +36,8 @@ type Bundle struct {
 	TransactionRepo transaction.Repository
 	UserRepo        user.Repository
 	RestockRepo     restock.Repository
+	ProductRepo     product.Repository
+	AuditRepo       audit.Repository
 
 	// Attempts counts how often a unit of work has been opened, of either kind,
 	// so a test can assert that a retry did or did not happen, or that a read
@@ -72,3 +76,5 @@ func (b *Bundle) Slots() slot.Repository               { return b.SlotRepo }
 func (b *Bundle) Transactions() transaction.Repository { return b.TransactionRepo }
 func (b *Bundle) Users() user.Repository               { return b.UserRepo }
 func (b *Bundle) Restocks() restock.Repository         { return b.RestockRepo }
+func (b *Bundle) Products() product.Repository         { return b.ProductRepo }
+func (b *Bundle) Audit() audit.Repository              { return b.AuditRepo }

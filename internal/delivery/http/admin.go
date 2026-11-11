@@ -89,47 +89,6 @@ func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model
 	return s.svc.ListRestockSessions(r.Context(), in)
 }
 
-func (s *Server) products(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	return s.svc.ListProducts(r.Context(), newQuery(r).bool("includeArchived"))
-}
-
-func (s *Server) createProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	var in core.ProductInput
-	if err := decode(w, r, &in, imageBodyLimit); err != nil {
-		return nil, err
-	}
-	v, err := s.svc.CreateProduct(r.Context(), p, in)
-	return created{v}, err
-}
-
-func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	var in core.ProductInput
-	if err := decode(w, r, &in, imageBodyLimit); err != nil {
-		return nil, err
-	}
-	return s.svc.UpdateProduct(r.Context(), p, id, in)
-}
-
-func (s *Server) archiveProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	return s.svc.ArchiveProduct(r.Context(), p, id)
-}
-
-func (s *Server) restoreProduct(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	return s.svc.RestoreProduct(r.Context(), p, id)
-}
-
 func (s *Server) machines(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	list, err := s.svc.ListMachines(r.Context())
 	if list == nil {

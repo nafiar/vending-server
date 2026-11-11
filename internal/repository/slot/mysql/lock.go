@@ -99,3 +99,24 @@ func (s *MySQL) Restock(ctx context.Context, slotID int64, productID *int64, qty
 		WHERE id = ?`, productID, qty, slotID)
 	return err
 }
+
+func (s *MySQL) MachineIDsHolding(ctx context.Context, productID int64) ([]int64, error) {
+	// No lock is taken here, deliberately. The caller goes on to lock those
+	// machines, and a purchase locks machine before slot; holding slot locks
+	// while waiting for a machine row is the one order that deadlocks.
+	rows, err := s.q.QueryContext(ctx,
+		`SELECT DISTINCT machine_id FROM slots WHERE product_id = ?`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}

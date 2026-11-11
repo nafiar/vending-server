@@ -54,4 +54,10 @@ type Repository interface {
 	// It takes an exclusive lock on the machine row, so a caller that also locks
 	// a slot calls this first, keeping to the lock order above.
 	BumpCatalogVersion(ctx context.Context, id int64) error
+
+	// BumpCatalogVersions does the same for several machines at once, for a
+	// change that affects all of them: an edited product is sold by every
+	// machine holding it, and they must all stop quoting the old price in one
+	// step (BR-09). An empty list does nothing.
+	BumpCatalogVersions(ctx context.Context, ids []int64) error
 }

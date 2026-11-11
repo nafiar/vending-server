@@ -1,6 +1,9 @@
 package core
 
-import "vending/internal/model"
+import (
+	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
+)
 
 // The aliases the remaining core stories still use. They are model types; this
 // file exists only so that core's files need not be rewritten twice, once to
@@ -16,4 +19,10 @@ type Machine = model.Machine
 const (
 	roleAdmin    = model.RoleAdmin
 	roleOperator = model.RoleOperator
+)
+
+// Short names for the two repository helpers core's remaining SQL uses.
+type (
+	queryer    = mysqldb.Queryer
+	rowScanner = mysqldb.RowScanner
 )

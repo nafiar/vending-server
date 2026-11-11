@@ -86,6 +86,21 @@ func (mr *MockRepositoryMockRecorder) LockForUpdate(ctx, machineID, slotNumber a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForUpdate", reflect.TypeOf((*MockRepository)(nil).LockForUpdate), ctx, machineID, slotNumber)
 }
 
+// MachineIDsHolding mocks base method.
+func (m *MockRepository) MachineIDsHolding(ctx context.Context, productID int64) ([]int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MachineIDsHolding", ctx, productID)
+	ret0, _ := ret[0].([]int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MachineIDsHolding indicates an expected call of MachineIDsHolding.
+func (mr *MockRepositoryMockRecorder) MachineIDsHolding(ctx, productID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MachineIDsHolding", reflect.TypeOf((*MockRepository)(nil).MachineIDsHolding), ctx, productID)
+}
+
 // MarkNeedsCheck mocks base method.
 func (m *MockRepository) MarkNeedsCheck(ctx context.Context, slotID int64) error {
 	m.ctrl.T.Helper()

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
 )
 
 func (s *MySQL) LockShared(ctx context.Context, id int64) (model.MachineRecord, error) {
@@ -29,5 +30,15 @@ func (s *MySQL) LockForUpdate(ctx context.Context, id int64) (model.MachineRecor
 
 func (s *MySQL) BumpCatalogVersion(ctx context.Context, id int64) error {
 	_, err := s.q.ExecContext(ctx, `UPDATE machines SET catalog_version = catalog_version + 1 WHERE id = ?`, id)
+	return err
+}
+
+func (s *MySQL) BumpCatalogVersions(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := s.q.ExecContext(ctx,
+		`UPDATE machines SET catalog_version = catalog_version + 1 WHERE id IN (`+
+			mysqldb.Placeholders(len(ids))+`)`, mysqldb.Args(ids)...)
 	return err
 }

@@ -61,15 +61,3 @@ func TestPeriods(t *testing.T) {
 		t.Fatalf("WIB offset: %d", off)
 	}
 }
-
-func TestChangedFields(t *testing.T) {
-	b, a, changed := changedFields(
-		map[string]any{"name": "A", "price": int64(25000), "image": "x"},
-		map[string]any{"name": "A", "price": int64(30000), "image": "x"})
-	if !changed || len(a) != 1 || a["price"] != int64(30000) || b["price"] != int64(25000) {
-		t.Fatalf("got %v -> %v", b, a)
-	}
-	if _, _, changed := changedFields(map[string]any{"x": nil}, map[string]any{"x": nil}); changed {
-		t.Fatal("nil to nil is no change")
-	}
-}

@@ -24,6 +24,8 @@ import (
 	"vending/internal/repository/machine"
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	"vending/internal/repository/product"
+	productmysql "vending/internal/repository/product/mysql"
 	"vending/internal/repository/restock"
 	restockmysql "vending/internal/repository/restock/mysql"
 	"vending/internal/repository/session"
@@ -36,6 +38,7 @@ import (
 	uowmysql "vending/internal/repository/uow/mysql"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
+	productuc "vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
 	restockuc "vending/internal/usecase/restock"
 )
@@ -50,12 +53,14 @@ type Deps struct {
 	Transactions transaction.Repository
 	Sessions     session.Repository
 	Slots        slot.Repository
+	Products     product.Repository
 	Restocks     restock.Repository
 	Images       imagestore.Repository
 
 	// usecases
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
+	Product  productuc.UseCase
 	Purchase purchase.UseCase
 	Restock  restockuc.UseCase
 }
@@ -71,6 +76,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Transactions = transactionmysql.New(db)
 	d.Sessions = sessionmysql.New(db)
 	d.Slots = slotmysql.New(db)
+	d.Products = productmysql.New(db)
 	d.Restocks = restockmysql.New(db)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
@@ -82,12 +88,14 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	// depends on the catalog usecase rather than reading the slots again itself.
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
 	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
+	d.Product = productuc.New(d.UOW, d.Products, d.Images, cl, log)
 	return d
 }
 
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() deliveryhttp.UseCases {
 	return deliveryhttp.UseCases{
-		Auth: d.Auth, Catalog: d.Catalog, Purchase: d.Purchase, Restock: d.Restock,
+		Auth: d.Auth, Catalog: d.Catalog, Product: d.Product,
+		Purchase: d.Purchase, Restock: d.Restock,
 	}
 }
