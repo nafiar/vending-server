@@ -70,7 +70,7 @@ func TestTC03_TC04_CancelAndTimeout(t *testing.T) {
 	// An abandoned screen that never calls cancel is expired by the job (BR-06).
 	c := e.startPurchase(key, 1)
 	e.clock.Advance(61 * time.Second)
-	if n, err := e.svc.ExpirePending(t.Context()); err != nil || n != 1 {
+	if n, err := e.deps.Maintenance.ExpirePending(t.Context()); err != nil || n != 1 {
 		t.Fatalf("expire job: n=%d err=%v", n, err)
 	}
 	e.mustOK(e.asMachine(key, "GET", "/api/machine/transactions/"+c, nil), &st)

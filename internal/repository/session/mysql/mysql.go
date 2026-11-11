@@ -72,3 +72,16 @@ func (s *MySQL) DeleteByUser(ctx context.Context, userID int64) error {
 	_, err := s.q.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
 	return err
 }
+
+// DeleteIdle ends every session past its idle timeout (BR-13). The two kinds
+// are swept in one statement so that one call cannot clear the admins and then
+// fail before the operators.
+func (s *MySQL) DeleteIdle(ctx context.Context, adminBefore, operatorBefore time.Time) (int64, error) {
+	res, err := s.q.ExecContext(ctx, `DELETE FROM sessions
+		WHERE (kind = ? AND last_seen_at < ?) OR (kind = ? AND last_seen_at < ?)`,
+		model.KindAdmin, adminBefore, model.KindOperator, operatorBefore)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}

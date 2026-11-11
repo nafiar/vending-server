@@ -70,4 +70,13 @@ type Repository interface {
 
 	// RevenueBySlot is each slot's revenue over the span, best first.
 	RevenueBySlot(ctx context.Context, f model.ReportFilter) ([]model.SlotRevenue, error)
+
+	// Reconcile checks every slot's bookkeeping (NFR-05): the count the last
+	// operator visit left, minus what was sold since, against the count held
+	// now. Slots nobody has ever restocked come back with NeverRestocked set.
+	//
+	// It is here, and takes no filter, because it is the one question that
+	// spans every table at once -- slots, visits and sales -- and it is asked
+	// of the whole system or not at all.
+	Reconcile(ctx context.Context) ([]model.SlotReconciliation, error)
 }

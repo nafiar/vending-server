@@ -42,16 +42,13 @@ func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p model.Princ
 	return map[string]bool{"ok": true}, nil
 }
 
+// reconcile is the bookkeeping check an admin can run from the web (NFR-05).
+// The same check is a command-line subcommand, so what it finds is decided in
+// usecase/maintenance and only shaped here.
 func (s *Server) reconcile(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	rows, err := s.svc.Reconcile(r.Context())
+	out, err := s.uc.Maintenance.Reconcile(r.Context())
 	if err != nil {
 		return nil, err
 	}
-	mismatches := 0
-	for _, x := range rows {
-		if !x.Matches {
-			mismatches++
-		}
-	}
-	return map[string]any{"slots": rows, "mismatches": mismatches}, nil
+	return reconcileView(out), nil
 }

@@ -127,6 +127,21 @@ func (mr *MockRepositoryMockRecorder) DeleteByUser(ctx, userID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUser", reflect.TypeOf((*MockRepository)(nil).DeleteByUser), ctx, userID)
 }
 
+// DeleteIdle mocks base method.
+func (m *MockRepository) DeleteIdle(ctx context.Context, adminBefore, operatorBefore time.Time) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteIdle", ctx, adminBefore, operatorBefore)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteIdle indicates an expected call of DeleteIdle.
+func (mr *MockRepositoryMockRecorder) DeleteIdle(ctx, adminBefore, operatorBefore any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIdle", reflect.TypeOf((*MockRepository)(nil).DeleteIdle), ctx, adminBefore, operatorBefore)
+}
+
 // TouchSeen mocks base method.
 func (m *MockRepository) TouchSeen(ctx context.Context, id int64, at time.Time) error {
 	m.ctrl.T.Helper()

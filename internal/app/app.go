@@ -21,6 +21,8 @@ import (
 	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/repository/audit"
 	auditmysql "vending/internal/repository/audit/mysql"
+	"vending/internal/repository/health"
+	healthmysql "vending/internal/repository/health/mysql"
 	"vending/internal/repository/imagestore"
 	imagestorelocal "vending/internal/repository/imagestore/local"
 	"vending/internal/repository/machine"
@@ -46,6 +48,7 @@ import (
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	machineuc "vending/internal/usecase/machine"
+	"vending/internal/usecase/maintenance"
 	"vending/internal/usecase/operator"
 	productuc "vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
@@ -57,36 +60,44 @@ import (
 type Deps struct {
 	Runner *mysqldb.Runner
 
-	// repositories, bound to the pool for reads that need no transaction
-	UOW       uow.Repository
-	AuditLogs audit.Reader
-	History   transaction.History
+	// The repositories, bound to the pool. Anything that has to commit
+	// together goes through UOW instead, which hands out the same ports bound
+	// to one transaction.
+	UOW      uow.Repository
+	Machines machine.Repository
+	Slots    slot.Repository
+	Products product.Repository
+	Users    user.Repository
+	Sessions session.Repository
+	Restocks restock.Repository
 
-	// RestockHistory is the admin's record of visits, read-only.
+	Transactions transaction.Repository
+	Reports      report.Repository
+	Images       imagestore.Repository
+	Store        health.Repository
+
+	// The read-only halves of three ports whose write side is above. Each is
+	// the same driver, bound to the pool: a reader is not given the methods
+	// that write (repository/audit, repository/transaction, repository/restock).
+	AuditLogs      audit.Reader
+	History        transaction.History
 	RestockHistory restock.History
-	Machines       machine.Repository
-	Transactions   transaction.Repository
-	Sessions       session.Repository
-	Slots          slot.Repository
-	Products       product.Repository
-	Reports        report.Repository
-	Users          user.Repository
-	Restocks       restock.Repository
-	Images         imagestore.Repository
 
-	// usecases
-	Audit    audituc.UseCase
-	Auth     auth.UseCase
-	Catalog  catalog.UseCase
-	Machine  machineuc.UseCase
-	Operator operator.UseCase
+	// The usecases.
+	Audit       audituc.UseCase
+	Auth        auth.UseCase
+	Catalog     catalog.UseCase
+	Machine     machineuc.UseCase
+	Maintenance maintenance.UseCase
+	Operator    operator.UseCase
+	Product     productuc.UseCase
+	Purchase    purchase.UseCase
+	Recap       recap.UseCase
+	Restock     restockuc.UseCase
+
 	// OperatorConsole is the account management only the command line gets: it
 	// can make an admin, which the API must never be able to do.
 	OperatorConsole operator.Console
-	Product         productuc.UseCase
-	Purchase        purchase.UseCase
-	Recap           recap.UseCase
-	Restock         restockuc.UseCase
 }
 
 // Wire builds the graph. Settings in, usable system out. now is the clock the
@@ -106,6 +117,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Products = productmysql.New(db)
 	d.Reports = reportmysql.New(db)
 	d.Users = usermysql.New(db)
+	d.Store = healthmysql.New(db)
 	// One struct, two ports: the write side of a visit and the read-only history.
 	restocks := restockmysql.New(db)
 	d.Restocks, d.RestockHistory = restocks, restocks
@@ -113,6 +125,9 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 
 	cl := clock.New(now)
 	d.Audit = audituc.New(d.AuditLogs, cl, cfg.Location, log)
+	// The sweeps and the two checks the clock asks for, not a person.
+	d.Maintenance = maintenance.New(d.Transactions, d.Sessions, d.Reports, d.Store, cl,
+		cfg.PaymentWindow, cfg.AdminIdle, cfg.OperatorIdle, log)
 	d.Auth = auth.New(d.UOW, d.Sessions, d.Machines, cl, cfg.AdminIdle, cfg.OperatorIdle, log)
 	cat := catalog.New(d.UOW, d.Machines, cl, cfg.PaymentWindow, log)
 	d.Catalog = cat
@@ -132,7 +147,8 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 func (d Deps) UseCases() deliveryhttp.UseCases {
 	return deliveryhttp.UseCases{
 		Audit: d.Audit, Auth: d.Auth, Catalog: d.Catalog, Machine: d.Machine,
-		Operator: d.Operator, Product: d.Product, Recap: d.Recap,
+		Maintenance: d.Maintenance,
+		Operator:    d.Operator, Product: d.Product, Recap: d.Recap,
 		Purchase: d.Purchase, Restock: d.Restock,
 	}
 }

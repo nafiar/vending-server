@@ -117,6 +117,21 @@ func (mr *MockRepositoryMockRecorder) RecapTotals(ctx, f any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecapTotals", reflect.TypeOf((*MockRepository)(nil).RecapTotals), ctx, f)
 }
 
+// Reconcile mocks base method.
+func (m *MockRepository) Reconcile(ctx context.Context) ([]model.SlotReconciliation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reconcile", ctx)
+	ret0, _ := ret[0].([]model.SlotReconciliation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Reconcile indicates an expected call of Reconcile.
+func (mr *MockRepositoryMockRecorder) Reconcile(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reconcile", reflect.TypeOf((*MockRepository)(nil).Reconcile), ctx)
+}
+
 // RevenueByLocalDay mocks base method.
 func (m *MockRepository) RevenueByLocalDay(ctx context.Context, f model.ReportFilter, offsetSeconds int) (map[string]model.Totals, error) {
 	m.ctrl.T.Helper()

@@ -34,6 +34,8 @@ import (
 	"vending/internal/common/security"
 	"vending/internal/core"
 	deliveryhttp "vending/internal/delivery/http"
+	"vending/internal/delivery/scheduler"
+	"vending/internal/model"
 	"vending/internal/repository/mysqldb"
 	"vending/internal/seed"
 	"vending/web"
@@ -173,10 +175,12 @@ func serve(args []string) error {
 		a.log.Warn("no admin account yet: run `vending-server create-admin` (or `seed-demo` for demo data)")
 	}
 
-	if n, err := a.svc.ExpirePending(ctx); err == nil && n > 0 {
-		a.log.Info("expired abandoned payments left from the last run", "count", n)
-	}
-	go a.svc.RunJobs(ctx)
+	// The sweeps that keep the data honest, on their own timers. Catchup runs
+	// the expiry once before the first request, because a server that was
+	// stopped overnight comes back holding items for payments nobody will make.
+	jobs := scheduler.New(a.deps.Maintenance, a.log)
+	jobs.Catchup(ctx)
+	go jobs.Run(ctx)
 
 	opts := deliveryhttp.Options{UploadDir: a.cfg.UploadDir}
 	if a.cfg.DemoMode {
@@ -188,7 +192,7 @@ func serve(args []string) error {
 	}
 	srv := &http.Server{
 		Addr:              a.cfg.HTTPAddr,
-		Handler:           deliveryhttp.New(a.svc, a.deps.UseCases(), web.Admin(), a.log, opts),
+		Handler:           deliveryhttp.New(a.deps.UseCases(), web.Admin(), a.log, opts),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -279,7 +283,7 @@ func createAdmin(args []string) error {
 		if err := a.deps.OperatorConsole.SetPassword(ctx, *username, pw); err == nil {
 			printPassword("Password reset for", *username, pw, generated)
 			return nil
-		} else if e, ok := core.AsError(err); !ok || e.Code != "NOT_FOUND" {
+		} else if e, ok := model.AsError(err); !ok || e.Code != model.CodeNotFound {
 			return describe(err)
 		}
 	}
@@ -363,17 +367,16 @@ func reconcile(args []string) error {
 		return err
 	}
 	defer a.db.Close()
-	rows, err := a.svc.Reconcile(ctx)
+	check, err := a.deps.Maintenance.Reconcile(ctx)
 	if err != nil {
 		return err
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "MACHINE\tSLOT\tAT LAST VISIT\tSOLD SINCE\tEXPECTED\tACTUAL\tOK")
-	bad := 0
-	for _, r := range rows {
+	for _, r := range check.Slots {
 		ok := "yes"
 		if !r.Matches {
-			ok, bad = "NO", bad+1
+			ok = "NO"
 		}
 		visit := fmt.Sprint(r.CountAtVisit)
 		if r.NeverRestocked {
@@ -382,16 +385,16 @@ func reconcile(args []string) error {
 		fmt.Fprintf(tw, "%s\t%d\t%s\t%d\t%d\t%d\t%s\n", r.MachineCode, r.SlotNumber, visit, r.SoldSince, r.Expected, r.Actual, ok)
 	}
 	tw.Flush()
-	if bad > 0 {
-		return fmt.Errorf("%d slot(s) don't match their history", bad)
+	if check.Mismatches > 0 {
+		return fmt.Errorf("%d slot(s) don't match their history", check.Mismatches)
 	}
-	fmt.Printf("All %d slots match their visits and sales.\n", len(rows))
+	fmt.Printf("All %d slots match their visits and sales.\n", len(check.Slots))
 	return nil
 }
 
 // describe turns a validation error into a readable line for the terminal.
 func describe(err error) error {
-	e, ok := core.AsError(err)
+	e, ok := model.AsError(err)
 	if !ok {
 		return err
 	}

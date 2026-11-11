@@ -25,11 +25,11 @@ import (
 	"strings"
 	"time"
 
-	"vending/internal/core"
 	audituc "vending/internal/usecase/audit"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	machineuc "vending/internal/usecase/machine"
+	"vending/internal/usecase/maintenance"
 	"vending/internal/usecase/operator"
 	"vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
@@ -39,7 +39,6 @@ import (
 
 // Server routes requests to the usecases.
 type Server struct {
-	svc  *core.Service
 	uc   UseCases
 	log  *slog.Logger
 	mux  *http.ServeMux
@@ -49,18 +48,20 @@ type Server struct {
 
 // UseCases are the usecase ports this layer depends on. cmd/vending-server
 // builds the concrete ones and injects them, and a handler test passes mocks.
-// It grows as each slice moves out of core, and when core is empty it is the
-// only dependency left (docs/REARCHITECTURE.md).
+// It is the only dependency this layer has: there is no database, no pool and
+// no service struct behind it, which is what lets a handler be tested with
+// mocks and an httptest server (docs/ARCHITECTURE.md §7).
 type UseCases struct {
-	Audit    audituc.UseCase
-	Auth     auth.UseCase
-	Catalog  catalog.UseCase
-	Machine  machineuc.UseCase
-	Operator operator.UseCase
-	Product  product.UseCase
-	Purchase purchase.UseCase
-	Recap    recap.UseCase
-	Restock  restock.UseCase
+	Audit       audituc.UseCase
+	Auth        auth.UseCase
+	Catalog     catalog.UseCase
+	Machine     machineuc.UseCase
+	Maintenance maintenance.UseCase
+	Operator    operator.UseCase
+	Product     product.UseCase
+	Purchase    purchase.UseCase
+	Recap       recap.UseCase
+	Restock     restock.UseCase
 }
 
 // Options are the server's settings and optional features.
@@ -75,8 +76,8 @@ type Options struct {
 }
 
 // New returns the HTTP handler. web holds the admin web files (index.html at its root).
-func New(svc *core.Service, uc UseCases, web fs.FS, log *slog.Logger, opts Options) http.Handler {
-	s := &Server{svc: svc, uc: uc, log: log, mux: http.NewServeMux(), web: web, opts: opts}
+func New(uc UseCases, web fs.FS, log *slog.Logger, opts Options) http.Handler {
+	s := &Server{uc: uc, log: log, mux: http.NewServeMux(), web: web, opts: opts}
 	s.routes()
 	return s.withMiddleware(http.HandlerFunc(s.dispatch))
 }
@@ -95,7 +96,7 @@ func (s *Server) dispatch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
-	if err := s.svc.Ping(ctx); err != nil {
+	if err := s.uc.Maintenance.Ping(ctx); err != nil {
 		s.log.Error("health check: database unreachable", "err", err)
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "database": "unreachable"})
 		return

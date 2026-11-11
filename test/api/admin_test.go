@@ -316,11 +316,11 @@ func TestSeedDemo(t *testing.T) {
 	if res.Transactions < 1000 || res.Visits < 100 || len(res.MachineKeys) != 3 {
 		t.Fatalf("seed: %+v", res)
 	}
-	rows, err := e.svc.Reconcile(t.Context())
+	check, err := e.deps.Maintenance.Reconcile(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, r := range rows {
+	for _, r := range check.Slots {
 		if !r.Matches {
 			t.Errorf("slot %s/%d: expected %d, actual %d", r.MachineCode, r.SlotNumber, r.Expected, r.Actual)
 		}

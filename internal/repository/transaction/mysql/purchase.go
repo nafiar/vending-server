@@ -118,3 +118,19 @@ func (s *MySQL) MarkReported(ctx context.Context, id string, at time.Time) error
 	_, err := s.q.ExecContext(ctx, `UPDATE transactions SET customer_reported_at = ? WHERE id = ?`, at, id)
 	return err
 }
+
+// ExpireStaleAll is the periodic sweep (BR-06).
+//
+// Each row is stamped as finished at the end of its own payment window, as in
+// ExpireStale: when a purchase ended is a fact about that purchase, and nothing
+// says the sweep ran on time. The server may well have been stopped overnight.
+func (s *MySQL) ExpireStaleAll(ctx context.Context, startedBefore time.Time, window time.Duration) (int64, error) {
+	res, err := s.q.ExecContext(ctx, `UPDATE transactions
+		SET status = ?, finished_at = DATE_ADD(created_at, INTERVAL ? SECOND)
+		WHERE status = ? AND created_at < ?`,
+		model.StatusExpired, int(window/time.Second), model.StatusPending, startedBefore)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}

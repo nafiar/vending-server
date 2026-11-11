@@ -139,6 +139,21 @@ func (mr *MockRepositoryMockRecorder) ExpireStale(ctx, slotID, startedBefore, wi
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpireStale", reflect.TypeOf((*MockRepository)(nil).ExpireStale), ctx, slotID, startedBefore, window)
 }
 
+// ExpireStaleAll mocks base method.
+func (m *MockRepository) ExpireStaleAll(ctx context.Context, startedBefore time.Time, window time.Duration) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExpireStaleAll", ctx, startedBefore, window)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExpireStaleAll indicates an expected call of ExpireStaleAll.
+func (mr *MockRepositoryMockRecorder) ExpireStaleAll(ctx, startedBefore, window any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpireStaleAll", reflect.TypeOf((*MockRepository)(nil).ExpireStaleAll), ctx, startedBefore, window)
+}
+
 // Fail mocks base method.
 func (m *MockRepository) Fail(ctx context.Context, id, reason string, at time.Time) error {
 	m.ctrl.T.Helper()

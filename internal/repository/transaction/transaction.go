@@ -74,6 +74,15 @@ type Repository interface {
 	// nothing says the sweep ran promptly. window is that payment window.
 	ExpireStale(ctx context.Context, slotID int64, startedBefore time.Time, window time.Duration) error
 
+	// ExpireStaleAll is ExpireStale for every slot at once, and returns how
+	// many it ended. It is the periodic sweep (BR-06), so that an abandoned
+	// payment screen stops holding its item even on a slot nobody asks about
+	// again.
+	//
+	// It takes no lock: a PENDING transaction past its window cannot be paid
+	// any more, so there is nothing for a concurrent purchase to disagree with.
+	ExpireStaleAll(ctx context.Context, startedBefore time.Time, window time.Duration) (int64, error)
+
 	// Create inserts a new PENDING transaction, and returns an error wrapping
 	// model.ErrDuplicateID when that id was already used.
 	//

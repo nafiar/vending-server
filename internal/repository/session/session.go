@@ -44,6 +44,12 @@ type Repository interface {
 	// restocking a machine that is meant to be out of service.
 	DeleteByMachine(ctx context.Context, machineID int64) error
 
+	// DeleteIdle ends every session that has gone past its idle timeout, and
+	// returns how many. The two instants are the cutoffs for the two kinds,
+	// because an admin and an operator are given very different patience
+	// (BR-13), and the caller works out both from one clock reading.
+	DeleteIdle(ctx context.Context, adminBefore, operatorBefore time.Time) (int64, error)
+
 	// DeleteByUser ends every session of one account, for when it is
 	// deactivated or its password is reset. Both mean the person holding the
 	// old token should stop being trusted at once, not whenever it goes idle.

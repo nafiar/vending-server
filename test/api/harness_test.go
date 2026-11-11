@@ -56,9 +56,14 @@ func (c *fakeClock) Advance(d time.Duration) {
 }
 
 type env struct {
-	t     *testing.T
-	srv   *httptest.Server
-	svc   *core.Service
+	t   *testing.T
+	srv *httptest.Server
+	// svc is what the demo seed still needs; it goes with internal/core.
+	svc *core.Service
+	// deps is the graph, for the few tests that drive a usecase directly
+	// rather than over HTTP: the maintenance sweeps and the bookkeeping check,
+	// which no request triggers.
+	deps  app.Deps
 	clock *fakeClock
 	admin string // admin session token
 }
@@ -106,13 +111,13 @@ func newEnv(t *testing.T) *env {
 	deps := app.Wire(db, cfg, log, clock.Now)
 	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
-	srv := httptest.NewServer(deliveryhttp.New(svc, deps.UseCases(), web, log, deliveryhttp.Options{
+	srv := httptest.NewServer(deliveryhttp.New(deps.UseCases(), web, log, deliveryhttp.Options{
 		UploadDir: uploads,
 		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
 	}))
 	t.Cleanup(srv.Close)
 
-	e := &env{t: t, srv: srv, svc: svc, clock: clock}
+	e := &env{t: t, srv: srv, svc: svc, deps: deps, clock: clock}
 	if _, err := deps.OperatorConsole.CreateAdmin(ctx, "Admin Test", "admin", "admin12345"); err != nil {
 		t.Fatal(err)
 	}
