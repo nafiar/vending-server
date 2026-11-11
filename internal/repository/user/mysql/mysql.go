@@ -22,16 +22,20 @@ var _ user.Repository = (*MySQL)(nil)
 // one transaction (a call inside a unit of work).
 func New(q mysqldb.Queryer) *MySQL { return &MySQL{q: q} }
 
-const columns = `id, name, username, password_hash, role, is_active, failed_logins, locked_until`
+const columns = `id, name, username, password_hash, role, is_active, failed_logins, locked_until, created_at`
 
 func scan(r mysqldb.RowScanner) (model.User, error) {
 	var u model.User
-	var locked sql.NullTime
-	err := r.Scan(&u.ID, &u.Name, &u.Username, &u.PasswordHash, &u.Role, &u.IsActive, &u.FailedLogins, &locked)
+	// locked_until is nullable, and created_at is read as nullable because the
+	// demo seed writes rows directly.
+	var locked, created sql.NullTime
+	err := r.Scan(&u.ID, &u.Name, &u.Username, &u.PasswordHash, &u.Role, &u.IsActive,
+		&u.FailedLogins, &locked, &created)
 	if locked.Valid {
 		t := locked.Time
 		u.LockedUntil = &t
 	}
+	u.CreatedAt = created.Time
 	return u, err
 }
 

@@ -56,6 +56,21 @@ func (mr *MockRepositoryMockRecorder) ClearFailedLogins(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearFailedLogins", reflect.TypeOf((*MockRepository)(nil).ClearFailedLogins), ctx, id)
 }
 
+// Create mocks base method.
+func (m *MockRepository) Create(ctx context.Context, u model.User, at time.Time) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, u, at)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRepositoryMockRecorder) Create(ctx, u, at any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, u, at)
+}
+
 // FirstActiveAdminID mocks base method.
 func (m *MockRepository) FirstActiveAdminID(ctx context.Context) (int64, error) {
 	m.ctrl.T.Helper()
@@ -69,6 +84,36 @@ func (m *MockRepository) FirstActiveAdminID(ctx context.Context) (int64, error) 
 func (mr *MockRepositoryMockRecorder) FirstActiveAdminID(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FirstActiveAdminID", reflect.TypeOf((*MockRepository)(nil).FirstActiveAdminID), ctx)
+}
+
+// List mocks base method.
+func (m *MockRepository) List(ctx context.Context) ([]model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx)
+	ret0, _ := ret[0].([]model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockRepositoryMockRecorder) List(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockRepository)(nil).List), ctx)
+}
+
+// LockByID mocks base method.
+func (m *MockRepository) LockByID(ctx context.Context, id int64) (model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockByID", ctx, id)
+	ret0, _ := ret[0].(model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockByID indicates an expected call of LockByID.
+func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
 }
 
 // LockForUpdate mocks base method.
@@ -100,6 +145,20 @@ func (mr *MockRepositoryMockRecorder) LockUntil(ctx, id, until any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockUntil", reflect.TypeOf((*MockRepository)(nil).LockUntil), ctx, id, until)
 }
 
+// SetActive mocks base method.
+func (m *MockRepository) SetActive(ctx context.Context, id int64, active bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActive", ctx, id, active)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActive indicates an expected call of SetActive.
+func (mr *MockRepositoryMockRecorder) SetActive(ctx, id, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActive", reflect.TypeOf((*MockRepository)(nil).SetActive), ctx, id, active)
+}
+
 // SetFailedLogins mocks base method.
 func (m *MockRepository) SetFailedLogins(ctx context.Context, id int64, failed int) error {
 	m.ctrl.T.Helper()
@@ -112,4 +171,32 @@ func (m *MockRepository) SetFailedLogins(ctx context.Context, id int64, failed i
 func (mr *MockRepositoryMockRecorder) SetFailedLogins(ctx, id, failed any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFailedLogins", reflect.TypeOf((*MockRepository)(nil).SetFailedLogins), ctx, id, failed)
+}
+
+// SetPassword mocks base method.
+func (m *MockRepository) SetPassword(ctx context.Context, id int64, hash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPassword", ctx, id, hash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetPassword indicates an expected call of SetPassword.
+func (mr *MockRepositoryMockRecorder) SetPassword(ctx, id, hash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPassword", reflect.TypeOf((*MockRepository)(nil).SetPassword), ctx, id, hash)
+}
+
+// SetPasswordByUsername mocks base method.
+func (m *MockRepository) SetPasswordByUsername(ctx context.Context, username, hash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPasswordByUsername", ctx, username, hash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetPasswordByUsername indicates an expected call of SetPasswordByUsername.
+func (mr *MockRepositoryMockRecorder) SetPasswordByUsername(ctx, username, hash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPasswordByUsername", reflect.TypeOf((*MockRepository)(nil).SetPasswordByUsername), ctx, username, hash)
 }

@@ -39,6 +39,37 @@ type Repository interface {
 	// that was right.
 	ClearFailedLogins(ctx context.Context, id int64) error
 
+	// List returns every staff account, by role then name. Admins are included:
+	// they can restock, so they belong in the restock filter (UC-12).
+	List(ctx context.Context) ([]model.User, error)
+
+	// LockByID returns one account and holds an exclusive lock on its row until
+	// the unit of work ends, or an error wrapping model.ErrNoRecord.
+	LockByID(ctx context.Context, id int64) (model.User, error)
+
+	// Create adds an account and returns its id. It reads Name, Username,
+	// PasswordHash and Role; a new account is active, and CreatedAt is the
+	// moment given.
+	//
+	// It returns an error wrapping model.ErrDuplicateID when the username is
+	// taken.
+	Create(ctx context.Context, u model.User, at time.Time) (int64, error)
+
+	// SetActive deactivates or reactivates an account.
+	SetActive(ctx context.Context, id int64, active bool) error
+
+	// SetPassword replaces the password hash and clears the lockout, because a
+	// new password should not arrive already locked out by the old one's failed
+	// attempts (FR-13).
+	SetPassword(ctx context.Context, id int64, hash string) error
+
+	// SetPasswordByUsername is SetPassword for the command line, where an
+	// account is named rather than numbered. It also reactivates the account,
+	// which is what makes it a way back in for an admin locked out of their
+	// own panel. It returns an error wrapping model.ErrNoRecord when there is
+	// no such account.
+	SetPasswordByUsername(ctx context.Context, username, hash string) error
+
 	// FirstActiveAdminID is the lowest-numbered active admin, or an error
 	// wrapping model.ErrNoRecord when there is none.
 	//

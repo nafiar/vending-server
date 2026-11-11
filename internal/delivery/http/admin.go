@@ -88,42 +88,6 @@ func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model
 	return s.svc.ListRestockSessions(r.Context(), in)
 }
 
-func (s *Server) operators(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	list, err := s.svc.ListOperators(r.Context())
-	if list == nil {
-		list = []core.OperatorView{}
-	}
-	return list, err
-}
-
-func (s *Server) createOperator(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	var in core.OperatorInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
-		return nil, err
-	}
-	v, err := s.svc.CreateOperator(r.Context(), p, in)
-	return created{v}, err
-}
-
-func (s *Server) setOperatorActive(active bool) adminFunc {
-	return func(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-		id, err := pathID(r, "id")
-		if err != nil {
-			return nil, err
-		}
-		return map[string]bool{"ok": true}, s.svc.SetOperatorActive(r.Context(), p, id, active)
-	}
-}
-
-func (s *Server) resetOperatorPassword(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	pw, err := s.svc.ResetOperatorPassword(r.Context(), p, id)
-	return map[string]string{"temporaryPassword": pw}, err
-}
-
 func (s *Server) auditLogs(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	return s.svc.ListAuditLogs(r.Context(), core.AuditQuery{From: q.str("from"), To: q.str("to"), EntityType: q.str("entityType")})

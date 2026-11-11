@@ -43,6 +43,7 @@ type User struct {
 	FailedLogins int
 	// LockedUntil is when the account reopens, nil when it is not shut.
 	LockedUntil *time.Time
+	CreatedAt   time.Time
 }
 
 // IsLockedAt reports whether the account is shut at this moment, and for how
@@ -82,4 +83,24 @@ type AuthSession struct {
 	Principal  Principal
 	LastSeenAt time.Time
 	UserActive bool
+}
+
+// Account limits. The password bounds differ by role on purpose: an admin's
+// password protects every machine's figures, an operator's protects one visit
+// and is typed on a kiosk by someone standing up.
+const (
+	MaxUserNameRunes    = 100
+	MinOperatorPassword = 6
+	MinAdminPassword    = 8
+	MaxPassword         = 128
+)
+
+// OperatorDetail is a staff account as the admin's list shows it: the account,
+// how often they have been out to a machine lately, and where they were last.
+type OperatorDetail struct {
+	User User
+	// Visits30 is how many restock visits they have made in the last 30 days.
+	Visits30 int64
+	// Last is their most recent visit, nil if they have never made one.
+	Last *Visit
 }

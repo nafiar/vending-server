@@ -19,6 +19,10 @@ type Queryer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
+// ErrNoRows is sql.ErrNoRows under a name a driver can use without importing
+// database/sql for that one sentinel.
+var ErrNoRows = sql.ErrNoRows
+
 // The MySQL error numbers the repositories react to.
 const (
 	numDuplicateKey = 1062

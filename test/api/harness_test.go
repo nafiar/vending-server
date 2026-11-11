@@ -113,7 +113,7 @@ func newEnv(t *testing.T) *env {
 	t.Cleanup(srv.Close)
 
 	e := &env{t: t, srv: srv, svc: svc, clock: clock}
-	if _, err := svc.CreateAdmin(ctx, "Admin Test", "admin", "admin12345"); err != nil {
+	if _, err := deps.OperatorConsole.CreateAdmin(ctx, "Admin Test", "admin", "admin12345"); err != nil {
 		t.Fatal(err)
 	}
 	e.relogin()
@@ -480,4 +480,18 @@ type machineReply struct {
 type machineKeyReply struct {
 	Machine machineReply `json:"machine"`
 	APIKey  string       `json:"apiKey"`
+}
+
+// operatorReply is a staff account as the admin's list shows it, declared here
+// rather than imported, for the reason catalogReply gives.
+type operatorReply struct {
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	Username         string  `json:"username"`
+	Role             string  `json:"role"`
+	IsActive         bool    `json:"isActive"`
+	CreatedAt        int64   `json:"createdAt"`
+	LastVisitAt      *int64  `json:"lastVisitAt"`
+	LastVisitMachine *string `json:"lastVisitMachine"`
+	Visits30         int64   `json:"visits30"`
 }

@@ -137,18 +137,6 @@ type RestockPage struct {
 	Rows     []RestockSessionView `json:"rows"`
 }
 
-type OperatorView struct {
-	ID               int64   `json:"id"`
-	Name             string  `json:"name"`
-	Username         string  `json:"username"`
-	Role             string  `json:"role"`
-	IsActive         bool    `json:"isActive"`
-	CreatedAt        int64   `json:"createdAt"`
-	LastVisitAt      *int64  `json:"lastVisitAt"`
-	LastVisitMachine *string `json:"lastVisitMachine"`
-	Visits30         int64   `json:"visits30"`
-}
-
 type AuditView struct {
 	ID          int64           `json:"id"`
 	CreatedAt   int64           `json:"createdAt"`

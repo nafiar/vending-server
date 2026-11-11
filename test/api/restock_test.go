@@ -172,7 +172,7 @@ func TestTC20_OperatorIdle(t *testing.T) {
 
 	// A deactivated operator can't log in, and an active session ends with the account.
 	tok = e.operatorLogin(key, "budi", "budi123")
-	var ops []core.OperatorView
+	var ops []operatorReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/operators", nil), &ops)
 	var budi int64
 	for _, o := range ops {

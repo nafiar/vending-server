@@ -276,14 +276,14 @@ func createAdmin(args []string) error {
 		pw = security.TemporaryPassword(14)
 	}
 	if *reset {
-		if err := a.svc.SetPassword(ctx, *username, pw); err == nil {
+		if err := a.deps.OperatorConsole.SetPassword(ctx, *username, pw); err == nil {
 			printPassword("Password reset for", *username, pw, generated)
 			return nil
 		} else if e, ok := core.AsError(err); !ok || e.Code != "NOT_FOUND" {
 			return describe(err)
 		}
 	}
-	if _, err := a.svc.CreateAdmin(ctx, *name, *username, pw); err != nil {
+	if _, err := a.deps.OperatorConsole.CreateAdmin(ctx, *name, *username, pw); err != nil {
 		return describe(err)
 	}
 	printPassword("Admin account created:", *username, pw, generated)
