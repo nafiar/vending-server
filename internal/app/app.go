@@ -19,6 +19,8 @@ import (
 	"vending/internal/common/clock"
 	"vending/internal/common/config"
 	deliveryhttp "vending/internal/delivery/http"
+	"vending/internal/repository/audit"
+	auditmysql "vending/internal/repository/audit/mysql"
 	"vending/internal/repository/imagestore"
 	imagestorelocal "vending/internal/repository/imagestore/local"
 	"vending/internal/repository/machine"
@@ -40,6 +42,7 @@ import (
 	uowmysql "vending/internal/repository/uow/mysql"
 	"vending/internal/repository/user"
 	usermysql "vending/internal/repository/user/mysql"
+	audituc "vending/internal/usecase/audit"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	machineuc "vending/internal/usecase/machine"
@@ -56,6 +59,7 @@ type Deps struct {
 
 	// repositories, bound to the pool for reads that need no transaction
 	UOW          uow.Repository
+	AuditLogs    audit.Reader
 	Machines     machine.Repository
 	Transactions transaction.Repository
 	Sessions     session.Repository
@@ -67,6 +71,7 @@ type Deps struct {
 	Images       imagestore.Repository
 
 	// usecases
+	Audit    audituc.UseCase
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
 	Machine  machineuc.UseCase
@@ -87,6 +92,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Runner = mysqldb.NewRunner(db, log)
 
 	d.UOW = uowmysql.New(d.Runner)
+	d.AuditLogs = auditmysql.New(db)
 	d.Machines = machinemysql.New(db)
 	d.Transactions = transactionmysql.New(db)
 	d.Sessions = sessionmysql.New(db)
@@ -98,6 +104,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
+	d.Audit = audituc.New(d.AuditLogs, cl, cfg.Location, log)
 	d.Auth = auth.New(d.UOW, d.Sessions, d.Machines, cl, cfg.AdminIdle, cfg.OperatorIdle, log)
 	cat := catalog.New(d.UOW, d.Machines, cl, cfg.PaymentWindow, log)
 	d.Catalog = cat
@@ -116,7 +123,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() deliveryhttp.UseCases {
 	return deliveryhttp.UseCases{
-		Auth: d.Auth, Catalog: d.Catalog, Machine: d.Machine,
+		Audit: d.Audit, Auth: d.Auth, Catalog: d.Catalog, Machine: d.Machine,
 		Operator: d.Operator, Product: d.Product, Recap: d.Recap,
 		Purchase: d.Purchase, Restock: d.Restock,
 	}

@@ -67,11 +67,6 @@ func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model
 	return s.svc.ListRestockSessions(r.Context(), in)
 }
 
-func (s *Server) auditLogs(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	q := newQuery(r)
-	return s.svc.ListAuditLogs(r.Context(), core.AuditQuery{From: q.str("from"), To: q.str("to"), EntityType: q.str("entityType")})
-}
-
 func (s *Server) reconcile(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	rows, err := s.svc.Reconcile(r.Context())
 	if err != nil {

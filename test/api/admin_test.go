@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"vending/internal/core"
 	"vending/internal/seed"
 )
 
@@ -267,7 +266,7 @@ func TestTC31_ChangeLog(t *testing.T) {
 	e.mustOK(e.asAdmin("PUT", fmt.Sprintf("/api/admin/products/%d", p), map[string]any{"name": "Gacha Rare", "price": 30000}), nil)
 	e.mustOK(e.asAdmin("PUT", fmt.Sprintf("/api/admin/products/%d", p), map[string]any{"name": "Gacha Rare", "price": 30000}), nil) // no change: no row
 
-	var logs []core.AuditView
+	var logs []auditRow
 	e.mustOK(e.asAdmin("GET", "/api/admin/audit-logs?entityType=PRODUCT", nil), &logs)
 	if len(logs) != 2 {
 		t.Fatalf("want CREATE and one UPDATE, got %d", len(logs))

@@ -16,6 +16,18 @@ import (
 
 //go:generate mockgen -source=audit.go -destination=mock/audit_mock.go -package=mock
 
+// Reader is the change log read back (UC-12).
+//
+// It is a port of its own, and not a method on Repository, so that the bundle
+// in uow.Tx keeps offering writes and nothing else. A usecase that only shows
+// the log asks for a Reader, bound to the pool; the one place a row is written
+// still reaches it through the unit of work that makes the change.
+type Reader interface {
+	// List returns the rows in the filter's span, newest first, capped at
+	// f.Limit. An empty span is no rows, not an error.
+	List(ctx context.Context, f model.AuditFilter) ([]model.AuditLog, error)
+}
+
 // Repository is the audit_logs table as the rules see it.
 type Repository interface {
 	// Write records one change-log row.

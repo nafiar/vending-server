@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"vending/internal/core"
+	audituc "vending/internal/usecase/audit"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	machineuc "vending/internal/usecase/machine"
@@ -51,6 +52,7 @@ type Server struct {
 // It grows as each slice moves out of core, and when core is empty it is the
 // only dependency left (docs/REARCHITECTURE.md).
 type UseCases struct {
+	Audit    audituc.UseCase
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
 	Machine  machineuc.UseCase

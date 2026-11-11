@@ -1,7 +1,5 @@
 package core
 
-import "encoding/json"
-
 // JSON shapes returned by the API. Field names follow the contract the admin web
 // (admin/README.md) and the kiosk (kiosk/README.md) already use. Every time is a
 // Unix timestamp in milliseconds (UTC), which the browser turns into WIB.
@@ -83,16 +81,4 @@ type RestockPage struct {
 	Page     int                  `json:"page"`
 	PageSize int                  `json:"pageSize"`
 	Rows     []RestockSessionView `json:"rows"`
-}
-
-type AuditView struct {
-	ID          int64           `json:"id"`
-	CreatedAt   int64           `json:"createdAt"`
-	User        IDName          `json:"user"`
-	Action      string          `json:"action"`
-	EntityType  string          `json:"entityType"`
-	EntityID    int64           `json:"entityId"`
-	EntityLabel string          `json:"entityLabel"`
-	Before      json.RawMessage `json:"before"`
-	After       json.RawMessage `json:"after"`
 }

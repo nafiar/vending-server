@@ -54,3 +54,42 @@ func Changes(before, after map[string]any) (b, a map[string]any, changed bool) {
 	}
 	return b, a, len(a) > 0
 }
+
+// MaxAuditRows is how many change-log rows one read returns. The change log is
+// read by eye, not by machine: past a couple of thousand rows the answer is a
+// narrower span, not a longer page.
+const MaxAuditRows = 2000
+
+// AuditEntityTypes are the entity types the change log can be filtered by.
+var AuditEntityTypes = map[string]bool{
+	EntityProduct: true, EntityMachine: true, EntitySlot: true, EntityUser: true,
+}
+
+// AuditFilter is the span of the change log to read, half-open as everywhere
+// else: At >= Start AND At < End. EntityType empty means every type, and Limit
+// caps the rows returned.
+type AuditFilter struct {
+	Start, End time.Time
+	EntityType string
+	Limit      int
+}
+
+// AuditLog is one change-log row read back for the screen, with the actor's
+// name already resolved so the list needs no second lookup. The actor is
+// flattened into the row rather than nested, as everywhere else in this package.
+//
+// Before and After are the stored JSON exactly as it was written, carried
+// through untouched: re-encoding a log row is how a change log starts to
+// disagree with what happened. Before is nil for a CREATE.
+type AuditLog struct {
+	ID          int64
+	At          time.Time
+	ActorID     int64
+	ActorName   string
+	Action      string
+	EntityType  string
+	EntityID    int64
+	EntityLabel string
+	Before      []byte
+	After       []byte
+}
