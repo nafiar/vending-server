@@ -26,8 +26,10 @@ import (
 
 	"vending/internal/common/calendar"
 	"vending/internal/common/clock"
+	"vending/internal/common/paging"
 	"vending/internal/model"
 	"vending/internal/repository/report"
+	"vending/internal/repository/transaction"
 )
 
 //go:generate mockgen -source=recap.go -destination=mock/recap_mock.go -package=mock
@@ -40,6 +42,11 @@ const (
 	maxRangeDays     = 731
 	// summaryDays is the "last 7 days" tile: today and the six before it.
 	summaryDays = 7
+	// defaultHistoryDays is the transaction history's span: the last week,
+	// which is the question that screen is usually opened with.
+	defaultHistoryDays = 7
+	// historyPageSize is one screenful of attempts.
+	historyPageSize = 25
 	// topProducts is how many products the recap highlights.
 	topProducts = 5
 )
@@ -54,17 +61,38 @@ type Query struct {
 	Breakdown string
 }
 
+// HistoryQuery is a request for the transaction history. From and To are local
+// calendar days (YYYY-MM-DD); empty means the last week. A zero MachineID,
+// SlotNumber, Status or Flag means "don't filter on it".
+type HistoryQuery struct {
+	From, To   string
+	MachineID  int64
+	SlotNumber int
+	// Status is one of the six transaction states.
+	Status string
+	// Flag narrows to what needs review: problem or reported (FR-24).
+	Flag           string
+	Page, PageSize int
+	// All asks for every matching attempt instead of one page, which is what
+	// the CSV export does.
+	All bool
+}
+
 // UseCase is the port the delivery layer depends on.
 type UseCase interface {
 	// Summary is the four tiles at the top of the admin home (FR-17).
 	Summary(ctx context.Context, machineID int64) (model.Summary, error)
 	// Recap is the revenue recap (UC-06, FR-17, FR-18).
 	Recap(ctx context.Context, q Query) (model.Recap, error)
+	// History is the transaction history: every purchase attempt, newest
+	// first, with the figures for the whole filtered set (UC-09, FR-24).
+	History(ctx context.Context, q HistoryQuery) (model.TransactionHistory, error)
 }
 
 // Service is the implementation. It depends only on interfaces.
 type Service struct {
 	reports report.Repository
+	history transaction.History
 	clock   clock.Clock
 	// loc is the zone whose calendar days every figure is grouped by.
 	loc *time.Location
@@ -74,11 +102,11 @@ type Service struct {
 var _ UseCase = (*Service)(nil)
 
 // New wires the dependencies. Called once in internal/app.
-func New(reports report.Repository, c clock.Clock, loc *time.Location, log *slog.Logger) *Service {
+func New(reports report.Repository, history transaction.History, c clock.Clock, loc *time.Location, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Service{reports: reports, clock: c, loc: loc, log: log}
+	return &Service{reports: reports, history: history, clock: c, loc: loc, log: log}
 }
 
 // Summary works out the four windows in the server's zone and asks for them.
@@ -240,4 +268,42 @@ func slotRows(list []model.SlotRevenue) []model.BreakdownRow {
 		})
 	}
 	return out
+}
+
+// History is the transaction history (UC-09, FR-24): every purchase attempt in
+// the span, newest first, one page at a time.
+//
+// It refuses a status or a review filter it does not know rather than ignoring
+// it. A filter silently dropped is worse than an error here: the screen would
+// show every attempt while saying it was showing the failed ones.
+func (s *Service) History(ctx context.Context, q HistoryQuery) (model.TransactionHistory, error) {
+	r, err := calendar.ParseRange(s.clock.Now(), s.loc, q.From, q.To, defaultHistoryDays, maxRangeDays)
+	if err != nil {
+		return model.TransactionHistory{}, err
+	}
+	fe := model.FieldErrors{}
+	if q.Status != "" && !model.TransactionStatuses[q.Status] {
+		fe.Add("status", "Status tidak dikenal.")
+	}
+	if q.Flag != "" && q.Flag != model.FlagProblem && q.Flag != model.FlagReported {
+		fe.Add("flag", "Filter tinjauan harus problem atau reported.")
+	}
+	if err := fe.Err(); err != nil {
+		return model.TransactionHistory{}, err
+	}
+
+	page := paging.Of(q.Page, q.PageSize, historyPageSize)
+	limit, offset := page.Window(q.All)
+	out, err := s.history.List(ctx, model.TransactionFilter{
+		Start: r.Start, End: r.End,
+		MachineID: q.MachineID, SlotNumber: q.SlotNumber,
+		Status: q.Status, Flag: q.Flag,
+		Limit: limit, Offset: offset,
+	})
+	if err != nil {
+		return model.TransactionHistory{}, err
+	}
+	// Which page this is was the caller's decision, so the usecase says it.
+	out.Page, out.PageSize = page.Number, page.Size
+	return out, nil
 }

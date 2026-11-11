@@ -43,18 +43,6 @@ func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p model.Princ
 	return map[string]bool{"ok": true}, nil
 }
 
-func (s *Server) transactions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	q := newQuery(r)
-	in := core.TransactionQuery{
-		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"), SlotNumber: int(q.int("slotNumber")),
-		Status: q.str("status"), Flag: q.str("flag"), Page: int(q.int("page")), PageSize: int(q.int("pageSize")), All: q.bool("all"),
-	}
-	if err := q.err(); err != nil {
-		return nil, err
-	}
-	return s.svc.ListTransactions(r.Context(), in)
-}
-
 func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	in := core.RestockQuery{

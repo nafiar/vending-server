@@ -348,9 +348,9 @@ func (e *env) slotQty(machineID int64, slot int) int {
 	return e.machineView(machineID).Slots[slot-1].Qty
 }
 
-func (e *env) transactions(query string) core.TransactionPage {
+func (e *env) transactions(query string) transactionPage {
 	e.t.Helper()
-	var p core.TransactionPage
+	var p transactionPage
 	e.mustOK(e.asAdmin("GET", "/api/admin/transactions?"+query, nil), &p)
 	return p
 }

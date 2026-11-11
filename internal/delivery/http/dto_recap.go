@@ -131,3 +131,70 @@ func breakdownRows(list []model.BreakdownRow) []breakdownRowDTO {
 	}
 	return out
 }
+
+// ---------------------------------------------------------------- history
+
+// historyQuery is the query string of GET /api/admin/transactions.
+func historyQuery(q *query) recap.HistoryQuery {
+	return recap.HistoryQuery{
+		From:       q.str("from"),
+		To:         q.str("to"),
+		MachineID:  q.int("machineId"),
+		SlotNumber: int(q.int("slotNumber")),
+		Status:     q.str("status"),
+		Flag:       q.str("flag"),
+		Page:       int(q.int("page")),
+		PageSize:   int(q.int("pageSize")),
+		All:        q.bool("all"),
+	}
+}
+
+type transactionRowDTO struct {
+	ID                 string        `json:"id"`
+	CreatedAt          int64         `json:"createdAt"`
+	PaidAt             *int64        `json:"paidAt"`
+	FinishedAt         *int64        `json:"finishedAt"`
+	Machine            machineRefDTO `json:"machine"`
+	SlotNumber         int           `json:"slotNumber"`
+	Product            idNameDTO     `json:"product"`
+	Price              int64         `json:"price"`
+	Status             string        `json:"status"`
+	FailureReason      *string       `json:"failureReason"`
+	CustomerReportedAt *int64        `json:"customerReportedAt"`
+}
+
+type transactionPageDTO struct {
+	Total            int64               `json:"total"`
+	Page             int                 `json:"page"`
+	PageSize         int                 `json:"pageSize"`
+	DispensedRevenue int64               `json:"dispensedRevenue"`
+	DispensedCount   int64               `json:"dispensedCount"`
+	Rows             []transactionRowDTO `json:"rows"`
+}
+
+func historyView(h model.TransactionHistory) transactionPageDTO {
+	out := transactionPageDTO{
+		Total:            h.Total,
+		Page:             h.Page,
+		PageSize:         h.PageSize,
+		DispensedRevenue: h.DispensedRevenue,
+		DispensedCount:   h.DispensedCount,
+		Rows:             make([]transactionRowDTO, 0, len(h.Rows)),
+	}
+	for _, r := range h.Rows {
+		out.Rows = append(out.Rows, transactionRowDTO{
+			ID:                 r.ID,
+			CreatedAt:          r.CreatedAt.UnixMilli(),
+			PaidAt:             millis(r.PaidAt),
+			FinishedAt:         millis(r.FinishedAt),
+			Machine:            machineRefDTO{ID: r.MachineID, Code: r.MachineCode, Name: r.MachineName},
+			SlotNumber:         r.SlotNumber,
+			Product:            idNameDTO{ID: r.ProductID, Name: r.ProductName},
+			Price:              r.Price,
+			Status:             r.Status,
+			FailureReason:      r.FailureReason,
+			CustomerReportedAt: millis(r.CustomerReportedAt),
+		})
+	}
+	return out
+}

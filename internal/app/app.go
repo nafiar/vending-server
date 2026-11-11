@@ -60,6 +60,7 @@ type Deps struct {
 	// repositories, bound to the pool for reads that need no transaction
 	UOW          uow.Repository
 	AuditLogs    audit.Reader
+	History      transaction.History
 	Machines     machine.Repository
 	Transactions transaction.Repository
 	Sessions     session.Repository
@@ -94,7 +95,9 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.UOW = uowmysql.New(d.Runner)
 	d.AuditLogs = auditmysql.New(db)
 	d.Machines = machinemysql.New(db)
-	d.Transactions = transactionmysql.New(db)
+	// One struct, two ports: the state-machine steps and the read-only history.
+	txs := transactionmysql.New(db)
+	d.Transactions, d.History = txs, txs
 	d.Sessions = sessionmysql.New(db)
 	d.Slots = slotmysql.New(db)
 	d.Products = productmysql.New(db)
@@ -112,7 +115,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	// depends on the catalog usecase rather than reading the slots again itself.
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
 	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
-	d.Recap = recap.New(d.Reports, cl, cfg.Location, log)
+	d.Recap = recap.New(d.Reports, d.History, cl, cfg.Location, log)
 	d.Product = productuc.New(d.UOW, d.Products, d.Images, cl, log)
 	d.Machine = machineuc.New(d.UOW, d.Machines, d.Slots, d.Reports, cl, cfg.Location, log)
 	ops := operator.New(d.UOW, d.Users, d.Reports, cl, cfg.Location, log)

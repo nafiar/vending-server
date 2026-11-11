@@ -9,8 +9,10 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"vending/internal/common/clock"
+	"vending/internal/common/paging"
 	"vending/internal/model"
 	reportmock "vending/internal/repository/report/mock"
+	txmock "vending/internal/repository/transaction/mock"
 	"vending/internal/usecase/recap"
 )
 
@@ -34,13 +36,17 @@ var (
 
 type fixture struct {
 	reports *reportmock.MockRepository
+	history *txmock.MockHistory
 	uc      *recap.Service
 }
 
 func newFixture(t *testing.T, now time.Time) (*fixture, *gomock.Controller) {
 	ctrl := gomock.NewController(t)
-	f := &fixture{reports: reportmock.NewMockRepository(ctrl)}
-	f.uc = recap.New(f.reports, clock.New(func() time.Time { return now }), jakarta, nil)
+	f := &fixture{
+		reports: reportmock.NewMockRepository(ctrl),
+		history: txmock.NewMockHistory(ctrl),
+	}
+	f.uc = recap.New(f.reports, f.history, clock.New(func() time.Time { return now }), jakarta, nil)
 	return f, ctrl
 }
 
@@ -455,5 +461,86 @@ func TestARepositoryFailureIsReported(t *testing.T) {
 
 	if _, err := f.uc.Recap(context.Background(), recap.Query{}); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want the repository's", err)
+	}
+}
+
+// ---------------------------------------------------------------- history
+
+// The history's own job is small and worth pinning down: it turns a page
+// request into a window, refuses a filter it does not understand, and says
+// which page it answered with. The rows themselves are the repository's.
+
+func TestHistoryWindowAndEchoedPage(t *testing.T) {
+	f, ctrl := newFixture(t, t0)
+	defer ctrl.Finish()
+
+	// Page 3 of 20 is rows 40 to 59, and the span defaults to the last week:
+	// 16 Oct 00:00 WIB up to the end of 22 Oct, both as UTC instants.
+	f.history.EXPECT().List(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, got model.TransactionFilter) (model.TransactionHistory, error) {
+			if got.Limit != 20 || got.Offset != 40 {
+				t.Errorf("window = limit %d offset %d, want 20 and 40", got.Limit, got.Offset)
+			}
+			wantStart := time.Date(2026, 10, 16, 0, 0, 0, 0, jakarta).UTC()
+			wantEnd := time.Date(2026, 10, 23, 0, 0, 0, 0, jakarta).UTC()
+			if !got.Start.Equal(wantStart) || !got.End.Equal(wantEnd) {
+				t.Errorf("span = %s..%s, want %s..%s", got.Start, got.End, wantStart, wantEnd)
+			}
+			return model.TransactionHistory{Total: 4812}, nil
+		})
+
+	out, err := f.uc.History(context.Background(), recap.HistoryQuery{Page: 3, PageSize: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Page != 3 || out.PageSize != 20 || out.Total != 4812 {
+		t.Fatalf("got page %d size %d total %d, want 3, 20 and 4812", out.Page, out.PageSize, out.Total)
+	}
+}
+
+// An export asks for every matching attempt, so the page number stops meaning
+// anything: it reads from the first row, capped.
+func TestHistoryExportIgnoresThePage(t *testing.T) {
+	f, ctrl := newFixture(t, t0)
+	defer ctrl.Finish()
+
+	f.history.EXPECT().List(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, got model.TransactionFilter) (model.TransactionHistory, error) {
+			if got.Offset != 0 || got.Limit != paging.MaxExportRows {
+				t.Errorf("export window = limit %d offset %d, want %d and 0", got.Limit, got.Offset, paging.MaxExportRows)
+			}
+			return model.TransactionHistory{}, nil
+		})
+
+	if _, err := f.uc.History(context.Background(), recap.HistoryQuery{Page: 7, PageSize: 20, All: true}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A filter nobody understands is refused, not dropped. Dropping it would show
+// every attempt on a screen that says it is showing the failed ones, and the
+// repository is never asked.
+func TestHistoryRefusesUnknownFilters(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		query recap.HistoryQuery
+		field string
+	}{
+		{"status", recap.HistoryQuery{Status: "LOST"}, "status"},
+		{"review flag", recap.HistoryQuery{Flag: "weird"}, "flag"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f, ctrl := newFixture(t, t0)
+			defer ctrl.Finish()
+			// No EXPECT on the history: it must not be reached.
+			_, err := f.uc.History(context.Background(), c.query)
+			if got := code(t, err); got != model.CodeValidation {
+				t.Fatalf("code = %s, want %s", got, model.CodeValidation)
+			}
+			e, _ := model.AsError(err)
+			if _, ok := e.Fields[c.field]; !ok {
+				t.Fatalf("fields = %v, want one on %q", e.Fields, c.field)
+			}
+		})
 	}
 }

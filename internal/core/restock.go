@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"database/sql"
+
+	"vending/internal/common/paging"
 )
 
 // ---------------------------------------------------------------- admin: restock history (UC-10)
@@ -24,7 +26,7 @@ func (s *Service) ListRestockSessions(ctx context.Context, q RestockQuery) (Rest
 	if err != nil {
 		return RestockPage{}, err
 	}
-	page, size := pageOf(q.Page, q.PageSize, 20)
+	page := paging.Of(q.Page, q.PageSize, 20)
 
 	where := ` WHERE rs.started_at >= ? AND rs.started_at < ?`
 	args := []any{r.Start, r.End}
@@ -36,14 +38,11 @@ func (s *Service) ListRestockSessions(ctx context.Context, q RestockQuery) (Rest
 		where += ` AND rs.user_id = ?`
 		args = append(args, q.UserID)
 	}
-	out := RestockPage{Page: page, PageSize: size, Rows: []RestockSessionView{}}
+	out := RestockPage{Page: page.Number, PageSize: page.Size, Rows: []RestockSessionView{}}
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM restock_sessions rs`+where, args...).Scan(&out.Total); err != nil {
 		return out, err
 	}
-	limit, offset := size, (page-1)*size
-	if q.All {
-		limit, offset = maxExportRows, 0
-	}
+	limit, offset := page.Window(q.All)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT rs.id, rs.client_id, rs.started_at, rs.finished_at, rs.note,
 		       m.id, m.code, m.name, u.id, u.name, u.username

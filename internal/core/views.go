@@ -31,29 +31,6 @@ type Totals struct {
 
 // ---------------------------------------------------------------- admin
 
-type TransactionRow struct {
-	ID                 string     `json:"id"`
-	CreatedAt          int64      `json:"createdAt"`
-	PaidAt             *int64     `json:"paidAt"`
-	FinishedAt         *int64     `json:"finishedAt"`
-	Machine            MachineRef `json:"machine"`
-	SlotNumber         int        `json:"slotNumber"`
-	Product            IDName     `json:"product"`
-	Price              int64      `json:"price"`
-	Status             string     `json:"status"`
-	FailureReason      *string    `json:"failureReason"`
-	CustomerReportedAt *int64     `json:"customerReportedAt"`
-}
-
-type TransactionPage struct {
-	Total            int64            `json:"total"`
-	Page             int              `json:"page"`
-	PageSize         int              `json:"pageSize"`
-	DispensedRevenue int64            `json:"dispensedRevenue"`
-	DispensedCount   int64            `json:"dispensedCount"`
-	Rows             []TransactionRow `json:"rows"`
-}
-
 type RestockItemView struct {
 	SlotNumber     int     `json:"slotNumber"`
 	ProductID      *int64  `json:"productId"`

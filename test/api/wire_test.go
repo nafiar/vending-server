@@ -40,3 +40,29 @@ type auditRow struct {
 	Before      json.RawMessage `json:"before"`
 	After       json.RawMessage `json:"after"`
 }
+
+// transactionRow is one row of GET /api/admin/transactions (UC-09, FR-24).
+type transactionRow struct {
+	ID                 string        `json:"id"`
+	CreatedAt          int64         `json:"createdAt"`
+	PaidAt             *int64        `json:"paidAt"`
+	FinishedAt         *int64        `json:"finishedAt"`
+	Machine            machineRefRow `json:"machine"`
+	SlotNumber         int           `json:"slotNumber"`
+	Product            idNameRow     `json:"product"`
+	Price              int64         `json:"price"`
+	Status             string        `json:"status"`
+	FailureReason      *string       `json:"failureReason"`
+	CustomerReportedAt *int64        `json:"customerReportedAt"`
+}
+
+// transactionPage is GET /api/admin/transactions: one page, and the figures for
+// the whole filtered set.
+type transactionPage struct {
+	Total            int64            `json:"total"`
+	Page             int              `json:"page"`
+	PageSize         int              `json:"pageSize"`
+	DispensedRevenue int64            `json:"dispensedRevenue"`
+	DispensedCount   int64            `json:"dispensedCount"`
+	Rows             []transactionRow `json:"rows"`
+}

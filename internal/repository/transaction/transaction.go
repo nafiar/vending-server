@@ -22,6 +22,19 @@ import (
 
 //go:generate mockgen -source=transaction.go -destination=mock/transaction_mock.go -package=mock
 
+// History is the transaction history the admin screen reads (UC-09, FR-24).
+//
+// It is a port of its own, apart from Repository, because it has nothing to do
+// with selling: it takes no lock, decides nothing, and answers one page of
+// questions about purchases that are already over. Keeping it separate means
+// the port that does sell stays the short list of state-machine steps above,
+// where every method has a lock story.
+type History interface {
+	// List returns one page of attempts, newest first, and the figures for the
+	// whole filtered set. It does not fill in Page or PageSize.
+	List(ctx context.Context, f model.TransactionFilter) (model.TransactionHistory, error)
+}
+
 // Repository is the transactions table as the rules see it.
 type Repository interface {
 	// CountOpenBySlot counts, per slot id, the transactions of one machine that

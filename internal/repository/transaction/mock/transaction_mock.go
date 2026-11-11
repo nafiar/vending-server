@@ -18,6 +18,45 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
+// MockHistory is a mock of History interface.
+type MockHistory struct {
+	ctrl     *gomock.Controller
+	recorder *MockHistoryMockRecorder
+	isgomock struct{}
+}
+
+// MockHistoryMockRecorder is the mock recorder for MockHistory.
+type MockHistoryMockRecorder struct {
+	mock *MockHistory
+}
+
+// NewMockHistory creates a new mock instance.
+func NewMockHistory(ctrl *gomock.Controller) *MockHistory {
+	mock := &MockHistory{ctrl: ctrl}
+	mock.recorder = &MockHistoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockHistory) EXPECT() *MockHistoryMockRecorder {
+	return m.recorder
+}
+
+// List mocks base method.
+func (m *MockHistory) List(ctx context.Context, f model.TransactionFilter) (model.TransactionHistory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, f)
+	ret0, _ := ret[0].(model.TransactionHistory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockHistoryMockRecorder) List(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockHistory)(nil).List), ctx, f)
+}
+
 // MockRepository is a mock of Repository interface.
 type MockRepository struct {
 	ctrl     *gomock.Controller

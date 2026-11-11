@@ -42,6 +42,21 @@ func (m *MockUseCase) EXPECT() *MockUseCaseMockRecorder {
 	return m.recorder
 }
 
+// History mocks base method.
+func (m *MockUseCase) History(ctx context.Context, q recap.HistoryQuery) (model.TransactionHistory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "History", ctx, q)
+	ret0, _ := ret[0].(model.TransactionHistory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// History indicates an expected call of History.
+func (mr *MockUseCaseMockRecorder) History(ctx, q any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "History", reflect.TypeOf((*MockUseCase)(nil).History), ctx, q)
+}
+
 // Recap mocks base method.
 func (m *MockUseCase) Recap(ctx context.Context, q recap.Query) (model.Recap, error) {
 	m.ctrl.T.Helper()
