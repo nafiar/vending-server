@@ -231,7 +231,7 @@ internal/
 ├── delivery/            inbound adapters:
 │                          http/      — routes, middleware, access wrappers, JSON errors, dto_* wire shapes
 │                          scheduler/ — the ticker that drives the maintenance sweeps
-└── app/                 the composition root: the only package that names a concrete driver
+└── app/                 the composition root: where the concrete drivers are chosen
 web/admin/               the admin web, embedded into the binary
 test/api/                black-box end-to-end tests over real MySQL
 deploy/                  deploy.sh (run on your laptop) and setup-vm.sh (run on the VM); see DEPLOY.md

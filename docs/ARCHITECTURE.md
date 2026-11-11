@@ -16,7 +16,7 @@ internal/
 ├── repository/       one port per table or external thing, plus its driver(s) in a subpackage.
 ├── usecase/          the business rules, one package per story.
 ├── delivery/         inbound adapters: http/ (requests) and scheduler/ (the clock).
-└── app/              the composition root: the only package that names a driver.
+└── app/              the composition root: where the drivers are chosen.
 web/                  the admin web, embedded
 test/api/             black-box end-to-end tests over real MySQL
 ```
@@ -205,11 +205,16 @@ make contract VENDING_TEST_DSN='…'   # go test ./test/api -run TestAPIContract
 
 ## 7. Composition and testing
 
-`internal/app` is the composition root. It is the **only** package that names a
-concrete driver (`mysql`, `local`), and it exists as a package rather than a
-file in `cmd` so that the end-to-end tests build the graph with the same
-function the binary does. Wiring a test differently from production is how a
-test suite starts proving the wrong thing.
+`internal/app` is the composition root. It is the only package **above the
+repository layer** that names a concrete driver (`mysql`, `local`), and it
+exists as a package rather than a file in `cmd` so that the end-to-end tests
+build the graph with the same function the binary does. Wiring a test
+differently from production is how a test suite starts proving the wrong thing.
+
+The one other place a driver names a driver is `repository/uow/mysql`, and it
+has to: the bundle it hands out is the per-table mysql repositories bound to one
+`*sql.Tx`, so building them is its whole job. It is a driver composing drivers
+of the same technology, which is the opposite of a rule reaching for one.
 
 Everything below receives its dependencies as interfaces, which is what the
 test layers rest on:
