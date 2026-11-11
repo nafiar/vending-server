@@ -51,9 +51,11 @@ func TestDependencyRule(t *testing.T) {
 	}
 }
 
-// legacy names the rearchitecture is dismantling (docs/REARCHITECTURE.md).
-// Nothing in a finished layer may import them, or the migration would gain a
-// new dependency on the very package it is emptying.
+// legacy names the three packages the rearchitecture dismantled: the fused
+// service, the old delivery layer and the pool-wielding demo seed
+// (docs/REARCHITECTURE.md). All three are gone, so importing one is already a
+// compile error; the rule stays because these are the names the same mistake
+// would be made under again, and a guard is cheaper than the memory of why.
 var legacy = map[string]bool{"core": true, "httpapi": true, "seed": true}
 
 func forbidden(layer, target string) string {

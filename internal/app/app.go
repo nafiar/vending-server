@@ -34,6 +34,8 @@ import (
 	reportmysql "vending/internal/repository/report/mysql"
 	"vending/internal/repository/restock"
 	restockmysql "vending/internal/repository/restock/mysql"
+	"vending/internal/repository/seeddata"
+	seeddatamysql "vending/internal/repository/seeddata/mysql"
 	"vending/internal/repository/session"
 	sessionmysql "vending/internal/repository/session/mysql"
 	"vending/internal/repository/slot"
@@ -47,6 +49,7 @@ import (
 	audituc "vending/internal/usecase/audit"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
+	"vending/internal/usecase/demo"
 	machineuc "vending/internal/usecase/machine"
 	"vending/internal/usecase/maintenance"
 	"vending/internal/usecase/operator"
@@ -75,6 +78,7 @@ type Deps struct {
 	Reports      report.Repository
 	Images       imagestore.Repository
 	Store        health.Repository
+	SeedData     seeddata.Repository
 
 	// The read-only halves of three ports whose write side is above. Each is
 	// the same driver, bound to the pool: a reader is not given the methods
@@ -87,6 +91,7 @@ type Deps struct {
 	Audit       audituc.UseCase
 	Auth        auth.UseCase
 	Catalog     catalog.UseCase
+	Demo        demo.UseCase
 	Machine     machineuc.UseCase
 	Maintenance maintenance.UseCase
 	Operator    operator.UseCase
@@ -118,12 +123,14 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Reports = reportmysql.New(db)
 	d.Users = usermysql.New(db)
 	d.Store = healthmysql.New(db)
+	d.SeedData = seeddatamysql.New(db)
 	// One struct, two ports: the write side of a visit and the read-only history.
 	restocks := restockmysql.New(db)
 	d.Restocks, d.RestockHistory = restocks, restocks
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
+
 	d.Audit = audituc.New(d.AuditLogs, cl, cfg.Location, log)
 	// The sweeps and the two checks the clock asks for, not a person.
 	d.Maintenance = maintenance.New(d.Transactions, d.Sessions, d.Reports, d.Store, cl,
@@ -140,6 +147,9 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Machine = machineuc.New(d.UOW, d.Machines, d.Slots, d.Reports, cl, cfg.Location, log)
 	ops := operator.New(d.UOW, d.Users, d.Reports, cl, cfg.Location, log)
 	d.Operator, d.OperatorConsole = ops, ops
+	// The demo load is not part of the API's usecases: it is reachable only
+	// from the command line and, on a demo server, from one admin endpoint.
+	d.Demo = demo.New(d.SeedData, d.Images, cl, cfg.Location)
 	return d
 }
 

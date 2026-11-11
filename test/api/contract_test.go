@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"vending/internal/common/security"
-	"vending/internal/seed"
 )
 
 // The API contract, captured as a shape: for every route, the status, the error
@@ -122,7 +121,7 @@ func record(label string, r reply) string {
 // against testdata/contract.golden.
 func TestAPIContract(t *testing.T) {
 	e := newEnv(t)
-	res, err := seed.Demo(t.Context(), e.svc, true)
+	res, err := e.deps.Demo.Load(t.Context(), true)
 	if err != nil {
 		t.Fatal(err)
 	}

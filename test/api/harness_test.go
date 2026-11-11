@@ -22,10 +22,8 @@ import (
 	"vending/internal/app"
 	"vending/internal/common/config"
 	"vending/internal/common/security"
-	"vending/internal/core"
 	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/repository/mysqldb"
-	"vending/internal/seed"
 )
 
 // The integration tests run the real HTTP handlers against a real MySQL. Each
@@ -58,11 +56,8 @@ func (c *fakeClock) Advance(d time.Duration) {
 type env struct {
 	t   *testing.T
 	srv *httptest.Server
-	// svc is what the demo seed still needs; it goes with internal/core.
-	svc *core.Service
-	// deps is the graph, for the few tests that drive a usecase directly
-	// rather than over HTTP: the maintenance sweeps and the bookkeeping check,
-	// which no request triggers.
+	// deps is the graph, for the few things no request triggers: the
+	// maintenance sweeps, the bookkeeping check and the demo load.
 	deps  app.Deps
 	clock *fakeClock
 	admin string // admin session token
@@ -109,15 +104,14 @@ func newEnv(t *testing.T) *env {
 	cfg := config.Defaults()
 	cfg.Location, cfg.UploadDir = jakarta, uploads
 	deps := app.Wire(db, cfg, log, clock.Now)
-	svc := core.New(db, core.Options{Location: jakarta, Images: deps.Images, Now: clock.Now, Logger: log})
 	web := fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>admin</title>")}}
 	srv := httptest.NewServer(deliveryhttp.New(deps.UseCases(), web, log, deliveryhttp.Options{
 		UploadDir: uploads,
-		DemoReset: func(ctx context.Context) error { _, err := seed.Demo(ctx, svc, true); return err },
+		DemoReset: func(ctx context.Context) error { _, err := deps.Demo.Load(ctx, true); return err },
 	}))
 	t.Cleanup(srv.Close)
 
-	e := &env{t: t, srv: srv, svc: svc, deps: deps, clock: clock}
+	e := &env{t: t, srv: srv, deps: deps, clock: clock}
 	if _, err := deps.OperatorConsole.CreateAdmin(ctx, "Admin Test", "admin", "admin12345"); err != nil {
 		t.Fatal(err)
 	}

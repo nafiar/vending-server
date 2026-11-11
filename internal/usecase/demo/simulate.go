@@ -1,31 +1,19 @@
-// Package seed loads demo data: three machines with about 90 days of sales and
-// restock visits, the same story as the admin web's mock mode, but simulated
-// event by event so every count reconciles with its history (NFR-05).
-package seed
+package demo
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"math"
 	"math/rand/v2"
 	"sort"
 	"strings"
 	"time"
 
+	"vending/internal/common/calendar"
+	"vending/internal/common/imagex"
 	"vending/internal/common/security"
-	"vending/internal/core"
+	"vending/internal/model"
 )
 
-// Result is what the seed created, for the command to print.
-type Result struct {
-	Users        []string          // "username / password"
-	MachineKeys  map[string]string // machine code -> key; empty when a reset kept the machine's old key
-	Transactions int
-	Visits       int
-}
+// ---------------------------------------------------------------- the simulation
 
 type product struct {
 	id         int64
@@ -103,44 +91,20 @@ type auditRow struct {
 var popularity = map[int64]float64{1: 0.7, 2: 0.9, 3: 1.2, 4: 1.4, 5: 1.8, 6: 1.0, 7: 0.8, 8: 1.3, 9: 0.6}
 var saleHours = []int{7, 8, 9, 9, 10, 11, 12, 12, 12, 13, 13, 14, 15, 15, 16, 17, 17, 18, 19}
 
-// Demo fills an empty database. With reset it first deletes every row, but
-// keeps the keys of machines that come back with the same code (VM-01 to
-// VM-03), so a kiosk already set up with its key keeps working after a reset.
-func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
-	db := svc.DB()
-	keptKeys := map[string]string{}
-	if reset {
-		rows, err := db.QueryContext(ctx, `SELECT code, api_key_hash FROM machines`)
-		if err != nil {
-			return Result{}, err
-		}
-		for rows.Next() {
-			var code, hash string
-			if err := rows.Scan(&code, &hash); err != nil {
-				rows.Close()
-				return Result{}, err
-			}
-			keptKeys[code] = hash
-		}
-		rows.Close()
-		if err := wipe(ctx, db); err != nil {
-			return Result{}, err
-		}
-	} else {
-		var n int
-		err := db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM machines) + (SELECT COUNT(*) FROM products)`).Scan(&n)
-		if err != nil {
-			return Result{}, err
-		}
-		if n > 0 {
-			return Result{}, errors.New("the database already has data; run seed-demo -reset to delete it first, or use an empty database")
-		}
-	}
-
-	loc := svc.Location()
-	rng := rand.New(rand.NewPCG(20261013, 22))
-	now := svc.Now()
-	today := startOfDay(now.In(loc))
+// build runs the simulation and returns the finished rows.
+//
+// It is one long function because it is one long story told in order: the
+// products exist, then the machines, then ninety days of visits and sales
+// happen to them, and only then is there a change log describing what the
+// admin did along the way. Splitting it would mean passing the half-built
+// world between the halves.
+//
+// keptKeys maps a machine code to the key hash kept from before a reset.
+func (s *Service) build(keptKeys map[string]string) (model.DemoData, model.DemoResult, error) {
+	loc := s.loc
+	rng := rand.New(rand.NewPCG(rngSeed1, rngSeed2))
+	now := s.clock.Now()
+	today := calendar.StartOfDay(now.In(loc))
 	at := func(daysAgo int, hour, minute int) time.Time {
 		d := today.AddDate(0, 0, -daysAgo)
 		return time.Date(d.Year(), d.Month(), d.Day(), hour, minute, 0, 0, loc).UTC()
@@ -161,9 +125,9 @@ func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
 		{9, "Gacha Holiday 2025", "Edisi liburan akhir tahun.", 45000, 100, false, ""},
 	}
 	for _, p := range products {
-		url, err := svc.StoreImage(core.PlaceholderSVG(p.name, int(p.id)), ".svg")
+		url, err := s.images.Save(imagex.Placeholder(p.name, int(p.id)), ".svg")
 		if err != nil {
-			return Result{}, err
+			return model.DemoData{}, model.DemoResult{}, err
 		}
 		p.image = url
 	}
@@ -369,80 +333,106 @@ func Demo(ctx context.Context, svc *core.Service, reset bool) (Result, error) {
 		auditRow{"UPDATE", "SLOT", machines[0].slots[2].id, "VM-01 · Slot 3", map[string]any{"nextProduct": nil}, map[string]any{"nextProduct": "Gacha Promo Edition"}, at(2, 16, 0)},
 	)
 
-	// ---- write everything in one transaction
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return Result{}, err
-	}
-	defer tx.Rollback() //nolint:errcheck
+	// ---- the rows, in the order they have to be written
+	data := model.DemoData{}
+	res := model.DemoResult{MachineKeys: map[string]string{}, Transactions: len(txs), Visits: len(visits)}
 
-	res := Result{MachineKeys: map[string]string{}, Transactions: len(txs), Visits: len(visits)}
 	for _, u := range users {
 		hash, err := security.HashPassword(u.password)
 		if err != nil {
-			return Result{}, err
+			return model.DemoData{}, model.DemoResult{}, err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO users (id, name, username, password_hash, role, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			u.id, u.name, u.username, hash, u.role, u.active, at(u.createdAgo, 10, 0)); err != nil {
-			return Result{}, err
-		}
+		data.Users = append(data.Users, model.DemoUser{
+			ID: u.id, Name: u.name, Username: u.username, PasswordHash: hash,
+			Role: u.role, IsActive: u.active, CreatedAt: at(u.createdAgo, 10, 0),
+		})
 		label := u.username + " / " + u.password + " (" + strings.ToLower(u.role)
 		if !u.active {
 			label += ", inactive"
 		}
 		res.Users = append(res.Users, label+")")
 	}
+
 	for _, p := range products {
 		created := at(p.createdAgo, 9, 0)
 		updated := created
 		if p.id == 2 {
-			updated = priceChangeAt
+			updated = priceChangeAt // the price change is the product's last edit
 		}
 		if !p.active {
-			updated = at(10, 15, 0)
+			updated = at(10, 15, 0) // archiving it was
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO products (id, name, description, price, image_url, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			p.id, p.name, p.desc, p.price, p.image, p.active, created, updated); err != nil {
-			return Result{}, err
-		}
+		data.Products = append(data.Products, model.DemoProduct{
+			ID: p.id, Name: p.name, Description: p.desc, Price: p.price, ImageURL: p.image,
+			IsActive: p.active, CreatedAt: created, UpdatedAt: updated,
+		})
 	}
+
 	for _, m := range machines {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO machines (id, code, name, location, api_key_hash, catalog_version, is_active, last_seen_at, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`, m.id, m.code, m.name, m.location, m.keyHash, m.version, m.lastSeen, m.created); err != nil {
-			return Result{}, err
-		}
+		data.Machines = append(data.Machines, model.DemoMachine{
+			ID: m.id, Code: m.code, Name: m.name, Location: m.location, KeyHash: m.keyHash,
+			CatalogVersion: m.version, LastSeenAt: m.lastSeen, CreatedAt: m.created,
+		})
+		// Empty for a machine whose key the reset kept: there is no new key to
+		// show, and the old one still works.
 		res.MachineKeys[m.code] = m.apiKey
-		for _, s := range m.slots {
-			var next any
-			if s.next != 0 {
-				next = s.next
+		for _, sl := range m.slots {
+			row := model.DemoSlot{
+				ID: sl.id, MachineID: m.id, Number: sl.number, ProductID: sl.product,
+				Capacity: sl.capacity, Qty: sl.qty, NeedsCheck: sl.blocked,
 			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO slots (id, machine_id, slot_number, product_id, next_product_id, capacity, qty, needs_check)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, s.id, m.id, s.number, s.product, next, s.capacity, s.qty, s.blocked); err != nil {
-				return Result{}, err
+			if sl.next != 0 {
+				next := sl.next
+				row.NextProductID = &next
 			}
+			data.Slots = append(data.Slots, row)
 		}
 	}
-	if err := insertVisits(ctx, tx, visits); err != nil {
-		return Result{}, err
+
+	for _, v := range visits {
+		row := model.DemoVisit{
+			ID: v.id, ClientID: v.clientID, MachineID: v.machineID, UserID: v.userID,
+			StartedAt: v.started, FinishedAt: v.finished,
+		}
+		for _, it := range v.items {
+			row.Items = append(row.Items, model.DemoVisitItem{
+				SlotID: it.slotID, ProductID: it.product,
+				QtyBefore: it.before, QtyAfter: it.after, ProductChanged: it.productChanged,
+			})
+		}
+		data.Visits = append(data.Visits, row)
 	}
-	if err := insertTransactions(ctx, tx, txs); err != nil {
-		return Result{}, err
+
+	for _, t := range txs {
+		row := model.DemoTransaction{
+			ID: t.id, MachineID: t.machineID, SlotID: t.slotID, ProductID: t.product,
+			Price: t.price, Status: t.status, CreatedAt: t.created,
+			PaidAt: optional(t.paid), FinishedAt: optional(t.finished), CustomerReportedAt: optional(t.rp),
+		}
+		if t.reason != "" {
+			reason := t.reason
+			row.FailureReason = &reason
+		}
+		data.Transactions = append(data.Transactions, row)
 	}
+
 	for _, a := range audits {
-		var before, after any
-		if a.before != nil {
-			b, _ := json.Marshal(a.before)
-			before = string(b)
-		}
-		b, _ := json.Marshal(a.after)
-		after = string(b)
-		if _, err := tx.ExecContext(ctx, `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, entity_label, before_json, after_json, created_at)
-			VALUES (1, ?, ?, ?, ?, ?, ?, ?)`, a.action, a.entity, a.entityID, a.label, before, after, a.at); err != nil {
-			return Result{}, err
-		}
+		data.Audits = append(data.Audits, model.DemoAudit{
+			// Every logged change in the simulated history was the admin's.
+			ActorID: 1, Action: a.action, EntityType: a.entity, EntityID: a.entityID,
+			Label: a.label, Before: a.before, After: a.after, At: a.at,
+		})
 	}
-	return res, tx.Commit()
+	return data, res, nil
+}
+
+// optional is a time that a purchase may never have reached, as a pointer the
+// repository writes as NULL.
+func optional(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 func pickSlot(rng *rand.Rand, slots []*slot) *slot {
@@ -470,84 +460,4 @@ func pickSlot(rng *rand.Rand, slots []*slot) *slot {
 		}
 	}
 	return nil
-}
-
-func nullTime(t time.Time) any {
-	if t.IsZero() {
-		return nil
-	}
-	return t
-}
-
-func insertTransactions(ctx context.Context, tx *sql.Tx, rows []txRow) error {
-	const batch = 500
-	for start := 0; start < len(rows); start += batch {
-		chunk := rows[start:min(start+batch, len(rows))]
-		args := make([]any, 0, len(chunk)*11)
-		for _, r := range chunk {
-			var reason any
-			if r.reason != "" {
-				reason = r.reason
-			}
-			args = append(args, r.id, r.machineID, r.slotID, r.product, r.price, r.status, reason, nullTime(r.rp), r.created, nullTime(r.paid), nullTime(r.finished))
-		}
-		values := strings.TrimSuffix(strings.Repeat("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),", len(chunk)), ",")
-		if _, err := tx.ExecContext(ctx, `INSERT INTO transactions
-			(id, machine_id, slot_id, product_id, price, status, failure_reason, customer_reported_at, created_at, paid_at, finished_at)
-			VALUES `+values, args...); err != nil {
-			return fmt.Errorf("insert transactions: %w", err)
-		}
-	}
-	return nil
-}
-
-func insertVisits(ctx context.Context, tx *sql.Tx, visits []visitRow) error {
-	const batch = 200
-	for start := 0; start < len(visits); start += batch {
-		chunk := visits[start:min(start+batch, len(visits))]
-		args := make([]any, 0, len(chunk)*6)
-		var items []any
-		nItems := 0
-		for _, v := range chunk {
-			args = append(args, v.id, v.clientID, v.machineID, v.userID, v.started, v.finished)
-			for _, it := range v.items {
-				items = append(items, v.id, it.slotID, it.product, it.before, it.after, it.productChanged)
-				nItems++
-			}
-		}
-		values := strings.TrimSuffix(strings.Repeat("(?, ?, ?, ?, ?, ?),", len(chunk)), ",")
-		if _, err := tx.ExecContext(ctx, `INSERT INTO restock_sessions (id, client_id, machine_id, user_id, started_at, finished_at) VALUES `+values, args...); err != nil {
-			return fmt.Errorf("insert restock sessions: %w", err)
-		}
-		ivalues := strings.TrimSuffix(strings.Repeat("(?, ?, ?, ?, ?, ?),", nItems), ",")
-		if _, err := tx.ExecContext(ctx, `INSERT INTO restock_items (session_id, slot_id, product_id, qty_before, qty_after, product_changed) VALUES `+ivalues, items...); err != nil {
-			return fmt.Errorf("insert restock items: %w", err)
-		}
-	}
-	return nil
-}
-
-// wipe deletes every row, child tables first, on one connection so the
-// foreign-key switch applies to all the statements.
-func wipe(ctx context.Context, db *sql.DB) error {
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	if _, err := conn.ExecContext(ctx, `SET FOREIGN_KEY_CHECKS = 0`); err != nil {
-		return err
-	}
-	defer conn.ExecContext(context.Background(), `SET FOREIGN_KEY_CHECKS = 1`) //nolint:errcheck
-	for _, t := range []string{"sessions", "audit_logs", "restock_items", "restock_sessions", "transactions", "slots", "machines", "products", "users"} {
-		if _, err := conn.ExecContext(ctx, "TRUNCATE TABLE "+t); err != nil {
-			return fmt.Errorf("empty %s: %w", t, err)
-		}
-	}
-	return nil
-}
-
-func startOfDay(t time.Time) time.Time {
-	y, m, d := t.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }

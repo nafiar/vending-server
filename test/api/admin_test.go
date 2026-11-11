@@ -12,8 +12,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"vending/internal/seed"
 )
 
 // TC-21, BR-13: an operator account can't use the admin web, and an admin
@@ -306,10 +304,10 @@ func TestTC31_ChangeLog(t *testing.T) {
 // The demo seed builds a consistent history: every slot reconciles.
 func TestSeedDemo(t *testing.T) {
 	e := newEnv(t)
-	if _, err := seed.Demo(t.Context(), e.svc, false); err == nil {
+	if _, err := e.deps.Demo.Load(t.Context(), false); err == nil {
 		t.Fatal("seeding a database that has an admin must be refused without -reset")
 	}
-	res, err := seed.Demo(t.Context(), e.svc, true)
+	res, err := e.deps.Demo.Load(t.Context(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +329,7 @@ func TestSeedDemo(t *testing.T) {
 // A demo reset from the admin web keeps the machine keys, so a configured kiosk keeps working.
 func TestDemoReset(t *testing.T) {
 	e := newEnv(t)
-	res, err := seed.Demo(t.Context(), e.svc, true)
+	res, err := e.deps.Demo.Load(t.Context(), true)
 	if err != nil {
 		t.Fatal(err)
 	}

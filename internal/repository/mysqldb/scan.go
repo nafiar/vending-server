@@ -55,6 +55,21 @@ func Placeholders(n int) string {
 	return strings.Repeat("?,", n-1) + "?"
 }
 
+// Rows is the VALUES list of a multi-row INSERT: n rows of c columns each,
+// as "(?, ?),(?, ?),(?, ?)". It is here beside Placeholders because a bulk
+// insert built by hand in a driver is where a column count drifts away from
+// the argument list.
+//
+// It returns "" for no rows, which is not a valid INSERT: a caller with nothing
+// to write must not run the statement at all.
+func Rows(n, c int) string {
+	if n <= 0 || c <= 0 {
+		return ""
+	}
+	one := "(" + Placeholders(c) + ")"
+	return strings.TrimSuffix(strings.Repeat(one+",", n), ",")
+}
+
 // Args turns ids into the args a query takes.
 func Args(ids []int64) []any {
 	out := make([]any, len(ids))

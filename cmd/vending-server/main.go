@@ -32,12 +32,10 @@ import (
 	"vending/internal/common/config"
 	"vending/internal/common/logx"
 	"vending/internal/common/security"
-	"vending/internal/core"
 	deliveryhttp "vending/internal/delivery/http"
 	"vending/internal/delivery/scheduler"
 	"vending/internal/model"
 	"vending/internal/repository/mysqldb"
-	"vending/internal/seed"
 	"vending/web"
 )
 
@@ -106,7 +104,6 @@ type instance struct {
 	cfg  config.Config
 	log  *slog.Logger
 	db   *sql.DB
-	svc  *core.Service
 	deps app.Deps
 }
 
@@ -136,16 +133,7 @@ func open(ctx context.Context, forceMigrate bool) (*instance, error) {
 			return nil, err
 		}
 	}
-	d := app.Wire(db, cfg, log, nil)
-	svc := core.New(db, core.Options{
-		Location:      cfg.Location,
-		Images:        d.Images,
-		AdminIdle:     cfg.AdminIdle,
-		OperatorIdle:  cfg.OperatorIdle,
-		PaymentWindow: cfg.PaymentWindow,
-		Logger:        log,
-	})
-	return &instance{cfg: cfg, log: log, db: db, svc: svc, deps: d}, nil
+	return &instance{cfg: cfg, log: log, db: db, deps: app.Wire(db, cfg, log, nil)}, nil
 }
 
 // ---------------------------------------------------------------- serve
@@ -185,7 +173,7 @@ func serve(args []string) error {
 	opts := deliveryhttp.Options{UploadDir: a.cfg.UploadDir}
 	if a.cfg.DemoMode {
 		opts.DemoReset = func(ctx context.Context) error {
-			_, err := seed.Demo(ctx, a.svc, true)
+			_, err := a.deps.Demo.Load(ctx, true)
 			return err
 		}
 		a.log.Warn("DEMO_MODE is on: any admin can reset all data from the admin web")
@@ -315,7 +303,7 @@ func seedDemo(args []string) error {
 	if err := os.MkdirAll(a.cfg.UploadDir, 0o755); err != nil {
 		return err
 	}
-	res, err := seed.Demo(ctx, a.svc, *reset)
+	res, err := a.deps.Demo.Load(ctx, *reset)
 	if err != nil {
 		return err
 	}
