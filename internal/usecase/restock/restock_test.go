@@ -28,6 +28,13 @@ import (
 var (
 	t0      = time.Date(2026, 10, 22, 3, 0, 0, 0, time.UTC)
 	started = t0.Add(-4 * time.Minute)
+	jakarta = func() *time.Location {
+		loc, err := time.LoadLocation("Asia/Jakarta")
+		if err != nil {
+			panic(err)
+		}
+		return loc
+	}()
 	vm      = model.Machine{ID: 9, Code: "VM-01", Name: "Depan"}
 	op      = model.Principal{UserID: 4, Name: "Budi", Username: "budi", MachineID: 9, StartedAt: started}
 	visitID = "3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b"
@@ -38,6 +45,7 @@ type fixture struct {
 	machines *machinemock.MockRepository
 	slots    *slotmock.MockRepository
 	restocks *restockmock.MockRepository
+	history  *restockmock.MockHistory
 	uc       *restock.Service
 }
 
@@ -47,9 +55,10 @@ func newFixture(t *testing.T) (*fixture, *gomock.Controller) {
 		machines: machinemock.NewMockRepository(ctrl),
 		slots:    slotmock.NewMockRepository(ctrl),
 		restocks: restockmock.NewMockRepository(ctrl),
+		history:  restockmock.NewMockHistory(ctrl),
 	}
 	f.unit = &uowtest.Bundle{MachineRepo: f.machines, SlotRepo: f.slots, RestockRepo: f.restocks}
-	f.uc = restock.New(f.unit, f.slots, clock.New(func() time.Time { return t0 }), nil)
+	f.uc = restock.New(f.unit, f.slots, f.history, clock.New(func() time.Time { return t0 }), jakarta, nil)
 	return f, ctrl
 }
 
@@ -554,3 +563,49 @@ func TestARepositoryFailureIsReported(t *testing.T) {
 
 func ptr(v int64) *int64             { return &v }
 func ptrTime(t time.Time) *time.Time { return &t }
+
+// ---------------------------------------------------------------- history
+
+// The history's own work is the tally: the repository returns the lines, and
+// this package reads what they mean. A product change counting its whole new
+// count (FR-16) is the case a SELECT got wrong quietly.
+func TestHistoryTalliesEachVisit(t *testing.T) {
+	f, ctrl := newFixture(t)
+	defer ctrl.Finish()
+
+	f.history.EXPECT().List(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, got model.RestockFilter) (model.RestockHistory, error) {
+			if got.Limit != 20 || got.Offset != 0 {
+				t.Errorf("window = limit %d offset %d, want 20 and 0", got.Limit, got.Offset)
+			}
+			return model.RestockHistory{Total: 1, Rows: []model.RestockVisit{{
+				ID: 7,
+				Items: []model.RestockVisitItem{
+					{SlotNumber: 1, QtyBefore: 2, QtyAfter: 10},                      // +8
+					{SlotNumber: 2, QtyBefore: 5, QtyAfter: 5},                       // untouched
+					{SlotNumber: 3, QtyBefore: 9, QtyAfter: 4, ProductChanged: true}, // all 4 are new
+				},
+			}}}, nil
+		})
+
+	out, err := f.uc.History(context.Background(), restock.HistoryQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Page != 1 || out.PageSize != 20 {
+		t.Fatalf("page = %d size %d, want 1 and 20", out.Page, out.PageSize)
+	}
+	if got := out.Rows[0]; got.ItemsAdded != 12 || got.SlotsChanged != 2 {
+		t.Fatalf("tally = %d added, %d changed; want 12 and 2", got.ItemsAdded, got.SlotsChanged)
+	}
+}
+
+// A span that cannot be read is refused before the repository is asked.
+func TestHistoryRefusesABadSpan(t *testing.T) {
+	f, ctrl := newFixture(t)
+	defer ctrl.Finish()
+	// No EXPECT on the history: it must not be reached.
+	if _, err := f.uc.History(context.Background(), restock.HistoryQuery{From: "2026-10-31", To: "2026-10-01"}); err == nil {
+		t.Fatal("a range that ends before it starts must be refused")
+	}
+}

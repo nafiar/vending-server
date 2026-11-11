@@ -62,3 +62,73 @@ type Visit struct {
 	At          time.Time
 	MachineCode string
 }
+
+// RestockFilter is one page of the restock history (UC-10, FR-25). Start and
+// End are UTC instants, half-open, and they bound StartedAt: a visit belongs to
+// the day the operator opened the machine. A zero MachineID or UserID means
+// "don't filter on it".
+type RestockFilter struct {
+	Start, End        time.Time
+	MachineID, UserID int64
+	Limit, Offset     int
+}
+
+// RestockVisitItem is one slot's line of a visit as the history shows it, with
+// the product named. ProductID and ProductName are nil for a slot that held
+// nothing.
+type RestockVisitItem struct {
+	SlotNumber     int
+	ProductID      *int64
+	ProductName    *string
+	QtyBefore      int
+	QtyAfter       int
+	ProductChanged bool
+}
+
+// RestockVisit is one visit as the admin history shows it, with the machine and
+// the operator flattened in. Note is nil when the operator left it empty.
+//
+// ItemsAdded and SlotsChanged are counted from Items by Tally rather than
+// stored: they are a reading of the evidence, and the evidence is the lines.
+type RestockVisit struct {
+	ID                             int64
+	ClientID                       string
+	StartedAt, FinishedAt          time.Time
+	Note                           *string
+	MachineID                      int64
+	MachineCode, MachineName       string
+	OperatorID                     int64
+	OperatorName, OperatorUsername string
+	ItemsAdded, SlotsChanged       int
+	Items                          []RestockVisitItem
+}
+
+// RestockHistory is one page of the restock history. Page and PageSize are
+// echoed back for the screen and filled in by the usecase, not the repository.
+type RestockHistory struct {
+	Total          int64
+	Page, PageSize int
+	Rows           []RestockVisit
+}
+
+// Tally counts what a visit changed: how many items were put in, and how many
+// slots ended up different from how they started.
+//
+// A planned product change counts the whole new count as added (FR-16). That is
+// not an approximation: applying a change empties the coil and refills it, so
+// every item in it afterwards was put there at this visit, even when the count
+// went down.
+func Tally(items []RestockVisitItem) (added, slotsChanged int) {
+	for _, it := range items {
+		switch {
+		case it.ProductChanged:
+			added += it.QtyAfter
+		case it.QtyAfter > it.QtyBefore:
+			added += it.QtyAfter - it.QtyBefore
+		}
+		if it.ProductChanged || it.QtyAfter != it.QtyBefore {
+			slotsChanged++
+		}
+	}
+	return added, slotsChanged
+}

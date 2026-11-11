@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"vending/internal/common/security"
-	"vending/internal/core"
 )
 
 // TC-13: one visit saves one session with a line per slot, sets the counts and
@@ -39,7 +38,7 @@ func TestTC13_RestockVisit(t *testing.T) {
 			t.Fatalf("slot %d: want %d, got %d", i+1, want, m.Slots[i].Qty)
 		}
 	}
-	var page core.RestockPage
+	var page restockPage
 	e.mustOK(e.asAdmin("GET", fmt.Sprintf("/api/admin/restock-sessions?userId=%d", opID), nil), &page)
 	if page.Total != 1 {
 		t.Fatalf("history: %+v", page)
@@ -73,7 +72,7 @@ func TestTC14_TC16_RestockBoundaries(t *testing.T) {
 	if q := e.slotQty(mid, 1); q != 0 {
 		t.Fatalf("a refused visit must save nothing: count %d", q)
 	}
-	var page core.RestockPage
+	var page restockPage
 	e.mustOK(e.asAdmin("GET", "/api/admin/restock-sessions", nil), &page)
 	before := page.Total
 
@@ -117,7 +116,7 @@ func TestTC17_TC18_PlannedChange(t *testing.T) {
 	if c.Slots[0].Product.ID != b || c.CatalogVersion != saved.CatalogVersion || !c.Slots[0].Available {
 		t.Fatalf("TC-17: after the visit the kiosk shows B: %+v", c)
 	}
-	var page core.RestockPage
+	var page restockPage
 	e.mustOK(e.asAdmin("GET", "/api/admin/restock-sessions", nil), &page)
 	if it := page.Rows[0].Items[0]; !it.ProductChanged || *it.ProductID != b || it.QtyAfter != 8 {
 		t.Fatalf("the visit line must record the change: %+v", it)
@@ -201,8 +200,8 @@ func TestReconcileAfterFlows(t *testing.T) {
 	e.startPurchase(key, 2) // left PENDING
 
 	var r struct {
-		Slots      []core.SlotReconciliation `json:"slots"`
-		Mismatches int                       `json:"mismatches"`
+		Slots      []slotReconciliation `json:"slots"`
+		Mismatches int                  `json:"mismatches"`
 	}
 	e.mustOK(e.asAdmin("GET", "/api/admin/reconcile", nil), &r)
 	if r.Mismatches != 0 || len(r.Slots) != 3 || r.Slots[0].Actual != 3 || r.Slots[0].SoldSince != 2 {

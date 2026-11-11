@@ -114,3 +114,82 @@ func restockSavedView(r model.RestockSaved) restockSavedDTO {
 		CatalogVersion: r.CatalogVersion,
 	}
 }
+
+// ---------------------------------------------------------------- history
+
+// restockHistoryQuery is the query string of GET /api/admin/restock-sessions.
+func restockHistoryQuery(q *query) restock.HistoryQuery {
+	return restock.HistoryQuery{
+		From:      q.str("from"),
+		To:        q.str("to"),
+		MachineID: q.int("machineId"),
+		UserID:    q.int("userId"),
+		Page:      int(q.int("page")),
+		PageSize:  int(q.int("pageSize")),
+		All:       q.bool("all"),
+	}
+}
+
+type restockItemDTO struct {
+	SlotNumber     int     `json:"slotNumber"`
+	ProductID      *int64  `json:"productId"`
+	ProductName    *string `json:"productName"`
+	QtyBefore      int     `json:"qtyBefore"`
+	QtyAfter       int     `json:"qtyAfter"`
+	ProductChanged bool    `json:"productChanged"`
+}
+
+type restockSessionDTO struct {
+	ID           int64            `json:"id"`
+	ClientID     string           `json:"clientId"`
+	StartedAt    int64            `json:"startedAt"`
+	FinishedAt   int64            `json:"finishedAt"`
+	Note         *string          `json:"note"`
+	Machine      machineRefDTO    `json:"machine"`
+	Operator     userRefDTO       `json:"operator"`
+	ItemsAdded   int              `json:"itemsAdded"`
+	SlotsChanged int              `json:"slotsChanged"`
+	Items        []restockItemDTO `json:"items"`
+}
+
+type restockPageDTO struct {
+	Total    int64               `json:"total"`
+	Page     int                 `json:"page"`
+	PageSize int                 `json:"pageSize"`
+	Rows     []restockSessionDTO `json:"rows"`
+}
+
+func restockHistoryView(h model.RestockHistory) restockPageDTO {
+	out := restockPageDTO{
+		Total:    h.Total,
+		Page:     h.Page,
+		PageSize: h.PageSize,
+		Rows:     make([]restockSessionDTO, 0, len(h.Rows)),
+	}
+	for _, v := range h.Rows {
+		row := restockSessionDTO{
+			ID:           v.ID,
+			ClientID:     v.ClientID,
+			StartedAt:    v.StartedAt.UnixMilli(),
+			FinishedAt:   v.FinishedAt.UnixMilli(),
+			Note:         v.Note,
+			Machine:      machineRefDTO{ID: v.MachineID, Code: v.MachineCode, Name: v.MachineName},
+			Operator:     userRefDTO{ID: v.OperatorID, Name: v.OperatorName, Username: v.OperatorUsername},
+			ItemsAdded:   v.ItemsAdded,
+			SlotsChanged: v.SlotsChanged,
+			Items:        make([]restockItemDTO, 0, len(v.Items)),
+		}
+		for _, it := range v.Items {
+			row.Items = append(row.Items, restockItemDTO{
+				SlotNumber:     it.SlotNumber,
+				ProductID:      it.ProductID,
+				ProductName:    it.ProductName,
+				QtyBefore:      it.QtyBefore,
+				QtyAfter:       it.QtyAfter,
+				ProductChanged: it.ProductChanged,
+			})
+		}
+		out.Rows = append(out.Rows, row)
+	}
+	return out
+}

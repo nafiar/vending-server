@@ -3,7 +3,6 @@ package http
 import (
 	"net/http"
 
-	"vending/internal/core"
 	"vending/internal/model"
 )
 
@@ -41,18 +40,6 @@ func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p model.Princ
 		return nil, err
 	}
 	return map[string]bool{"ok": true}, nil
-}
-
-func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	q := newQuery(r)
-	in := core.RestockQuery{
-		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"), UserID: q.int("userId"),
-		Page: int(q.int("page")), PageSize: int(q.int("pageSize")), All: q.bool("all"),
-	}
-	if err := q.err(); err != nil {
-		return nil, err
-	}
-	return s.svc.ListRestockSessions(r.Context(), in)
 }
 
 func (s *Server) reconcile(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {

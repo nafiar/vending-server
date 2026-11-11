@@ -66,3 +66,49 @@ type transactionPage struct {
 	DispensedCount   int64            `json:"dispensedCount"`
 	Rows             []transactionRow `json:"rows"`
 }
+
+// restockItem is one slot's line of a visit, and restockSession one visit, as
+// GET /api/admin/restock-sessions returns them (UC-10, FR-25).
+type restockItem struct {
+	SlotNumber     int     `json:"slotNumber"`
+	ProductID      *int64  `json:"productId"`
+	ProductName    *string `json:"productName"`
+	QtyBefore      int     `json:"qtyBefore"`
+	QtyAfter       int     `json:"qtyAfter"`
+	ProductChanged bool    `json:"productChanged"`
+}
+
+type restockSession struct {
+	ID           int64         `json:"id"`
+	ClientID     string        `json:"clientId"`
+	StartedAt    int64         `json:"startedAt"`
+	FinishedAt   int64         `json:"finishedAt"`
+	Note         *string       `json:"note"`
+	Machine      machineRefRow `json:"machine"`
+	Operator     userRefRow    `json:"operator"`
+	ItemsAdded   int           `json:"itemsAdded"`
+	SlotsChanged int           `json:"slotsChanged"`
+	Items        []restockItem `json:"items"`
+}
+
+type restockPage struct {
+	Total    int64            `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+	Rows     []restockSession `json:"rows"`
+}
+
+// slotReconciliation is one row of GET /api/admin/reconcile (NFR-05): the count
+// the last visit left, minus what was sold since, against the count held now.
+type slotReconciliation struct {
+	MachineCode    string `json:"machineCode"`
+	SlotNumber     int    `json:"slotNumber"`
+	LastVisitID    int64  `json:"lastVisitId"`
+	LastVisitAt    int64  `json:"lastVisitAt"`
+	CountAtVisit   int    `json:"countAtVisit"`
+	SoldSince      int    `json:"soldSince"`
+	Expected       int    `json:"expected"`
+	Actual         int    `json:"actual"`
+	Matches        bool   `json:"matches"`
+	NeverRestocked bool   `json:"neverRestocked"`
+}

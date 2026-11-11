@@ -35,9 +35,12 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"vending/internal/common/calendar"
 	"vending/internal/common/clock"
+	"vending/internal/common/paging"
 	"vending/internal/common/security"
 	"vending/internal/model"
+	restockrepo "vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/uow"
 )
@@ -81,7 +84,32 @@ type UseCase interface {
 
 	// Save records one confirmed visit (FR-15).
 	Save(ctx context.Context, m model.Machine, p model.Principal, in SaveInput) (model.RestockSaved, error)
+
+	// History is the admin's record of visits: who went where, when, and what
+	// they left in each slot (UC-10, FR-25).
+	History(ctx context.Context, q HistoryQuery) (model.RestockHistory, error)
 }
+
+// HistoryQuery is a request for the restock history. From and To are local
+// calendar days (YYYY-MM-DD); empty means the last week. A zero MachineID or
+// UserID means "don't filter on it".
+type HistoryQuery struct {
+	From, To       string
+	MachineID      int64
+	UserID         int64
+	Page, PageSize int
+	// All asks for every matching visit instead of one page, for the export.
+	All bool
+}
+
+// The history's span and page: the last week by default, two years at most --
+// the same ceiling every other admin screen has -- and ten visits to a page,
+// because a visit is a block of slot lines and not a single row.
+const (
+	defaultHistoryDays = 7
+	maxRangeDays       = 731
+	historyPageSize    = 20
+)
 
 // Service is the implementation. It depends only on interfaces.
 type Service struct {
@@ -90,18 +118,50 @@ type Service struct {
 	uow uow.Repository
 	// slots is bound to the pool, for showing the screen, which changes nothing.
 	slots slot.Repository
-	clock clock.Clock
-	log   *slog.Logger
+	// history is bound to the pool too: the admin's record of past visits.
+	history restockrepo.History
+	clock   clock.Clock
+	// loc is the zone the history's From and To days are read in.
+	loc *time.Location
+	log *slog.Logger
 }
 
 var _ UseCase = (*Service)(nil)
 
 // New wires the dependencies. Called once in internal/app.
-func New(u uow.Repository, slots slot.Repository, c clock.Clock, log *slog.Logger) *Service {
+func New(u uow.Repository, slots slot.Repository, history restockrepo.History, c clock.Clock, loc *time.Location, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Service{uow: u, slots: slots, clock: c, log: log}
+	return &Service{uow: u, slots: slots, history: history, clock: c, loc: loc, log: log}
+}
+
+// History is the admin's record of operator visits (UC-10, FR-25).
+//
+// What each visit changed is counted here rather than in the query: how many
+// items a product change counts as is a rule about the evidence (model.Tally),
+// and a rule in a SELECT is a rule nobody can test without a database.
+func (s *Service) History(ctx context.Context, q HistoryQuery) (model.RestockHistory, error) {
+	r, err := calendar.ParseRange(s.clock.Now(), s.loc, q.From, q.To, defaultHistoryDays, maxRangeDays)
+	if err != nil {
+		return model.RestockHistory{}, err
+	}
+	page := paging.Of(q.Page, q.PageSize, historyPageSize)
+	limit, offset := page.Window(q.All)
+
+	out, err := s.history.List(ctx, model.RestockFilter{
+		Start: r.Start, End: r.End,
+		MachineID: q.MachineID, UserID: q.UserID,
+		Limit: limit, Offset: offset,
+	})
+	if err != nil {
+		return model.RestockHistory{}, err
+	}
+	for i := range out.Rows {
+		out.Rows[i].ItemsAdded, out.Rows[i].SlotsChanged = model.Tally(out.Rows[i].Items)
+	}
+	out.Page, out.PageSize = page.Number, page.Size
+	return out, nil
 }
 
 func (s *Service) Slots(ctx context.Context, m model.Machine) (model.MachineSlots, error) {

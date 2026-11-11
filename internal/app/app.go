@@ -58,18 +58,21 @@ type Deps struct {
 	Runner *mysqldb.Runner
 
 	// repositories, bound to the pool for reads that need no transaction
-	UOW          uow.Repository
-	AuditLogs    audit.Reader
-	History      transaction.History
-	Machines     machine.Repository
-	Transactions transaction.Repository
-	Sessions     session.Repository
-	Slots        slot.Repository
-	Products     product.Repository
-	Reports      report.Repository
-	Users        user.Repository
-	Restocks     restock.Repository
-	Images       imagestore.Repository
+	UOW       uow.Repository
+	AuditLogs audit.Reader
+	History   transaction.History
+
+	// RestockHistory is the admin's record of visits, read-only.
+	RestockHistory restock.History
+	Machines       machine.Repository
+	Transactions   transaction.Repository
+	Sessions       session.Repository
+	Slots          slot.Repository
+	Products       product.Repository
+	Reports        report.Repository
+	Users          user.Repository
+	Restocks       restock.Repository
+	Images         imagestore.Repository
 
 	// usecases
 	Audit    audituc.UseCase
@@ -103,7 +106,9 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Products = productmysql.New(db)
 	d.Reports = reportmysql.New(db)
 	d.Users = usermysql.New(db)
-	d.Restocks = restockmysql.New(db)
+	// One struct, two ports: the write side of a visit and the read-only history.
+	restocks := restockmysql.New(db)
+	d.Restocks, d.RestockHistory = restocks, restocks
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
@@ -114,7 +119,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	// A refused stale purchase answers with the fresh catalog, so purchase
 	// depends on the catalog usecase rather than reading the slots again itself.
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
-	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
+	d.Restock = restockuc.New(d.UOW, d.Slots, d.RestockHistory, cl, cfg.Location, log)
 	d.Recap = recap.New(d.Reports, d.History, cl, cfg.Location, log)
 	d.Product = productuc.New(d.UOW, d.Products, d.Images, cl, log)
 	d.Machine = machineuc.New(d.UOW, d.Machines, d.Slots, d.Reports, cl, cfg.Location, log)

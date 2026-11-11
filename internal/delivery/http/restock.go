@@ -44,3 +44,19 @@ func (s *Server) saveRestock(w http.ResponseWriter, r *http.Request, m model.Mac
 	}
 	return restockSavedView(saved), nil
 }
+
+// The admin's record of operator visits (UC-10, FR-25). It is the same visits
+// the kiosk files above, read back by the office.
+
+func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
+	q := newQuery(r)
+	in := restockHistoryQuery(q)
+	if err := q.err(); err != nil {
+		return nil, err
+	}
+	page, err := s.uc.Restock.History(r.Context(), in)
+	if err != nil {
+		return nil, err
+	}
+	return restockHistoryView(page), nil
+}

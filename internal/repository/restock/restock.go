@@ -15,6 +15,18 @@ import (
 
 //go:generate mockgen -source=restock.go -destination=mock/restock_mock.go -package=mock
 
+// History is the restock history the admin screen reads (UC-10, FR-25).
+//
+// It is a port of its own, apart from Repository, because it only reads: the
+// write side above is the one place a visit enters the record, and a reader
+// should not be handed the methods that put one there.
+type History interface {
+	// List returns one page of visits, newest first, each with its lines per
+	// slot. It does not fill in Page or PageSize, and it does not count what a
+	// visit changed: that is a reading of the lines (model.Tally).
+	List(ctx context.Context, f model.RestockFilter) (model.RestockHistory, error)
+}
+
 // Repository is the restock_sessions and restock_items tables as the rules see
 // them. The two are one port because a session without its lines is not a
 // visit: nothing may write one without the other.
