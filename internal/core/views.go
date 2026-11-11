@@ -226,15 +226,3 @@ type MachineInfo struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
 }
-
-type OperatorSlots struct {
-	Machine MachineInfo `json:"machine"`
-	Slots   []SlotView  `json:"slots"`
-}
-
-type RestockSaved struct {
-	ID             string `json:"id"`
-	SessionID      int64  `json:"sessionId"`
-	SavedAt        int64  `json:"savedAt"`
-	CatalogVersion int64  `json:"catalogVersion"`
-}

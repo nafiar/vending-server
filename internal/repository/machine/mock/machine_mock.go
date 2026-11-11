@@ -86,6 +86,21 @@ func (mr *MockRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, id)
 }
 
+// LockForUpdate mocks base method.
+func (m *MockRepository) LockForUpdate(ctx context.Context, id int64) (model.MachineRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockForUpdate", ctx, id)
+	ret0, _ := ret[0].(model.MachineRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockForUpdate indicates an expected call of LockForUpdate.
+func (mr *MockRepositoryMockRecorder) LockForUpdate(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForUpdate", reflect.TypeOf((*MockRepository)(nil).LockForUpdate), ctx, id)
+}
+
 // LockShared mocks base method.
 func (m *MockRepository) LockShared(ctx context.Context, id int64) (model.MachineRecord, error) {
 	m.ctrl.T.Helper()

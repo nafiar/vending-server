@@ -20,7 +20,7 @@ func TestTC13_RestockVisit(t *testing.T) {
 	opID := e.createOperator("budi", "budi123")
 
 	tok := e.operatorLogin(key, "budi", "budi123")
-	var slots core.OperatorSlots
+	var slots operatorSlotsReply
 	e.mustOK(e.asOperator(key, tok, "GET", "/api/machine/operator/slots", nil), &slots)
 	if len(slots.Slots) != 6 || slots.Slots[3].Qty != 7 || slots.Slots[0].Capacity != 10 {
 		t.Fatalf("restock screen: %+v", slots)
@@ -78,7 +78,7 @@ func TestTC14_TC16_RestockBoundaries(t *testing.T) {
 	before := page.Total
 
 	same := map[string]any{"id": security.NewUUID(), "items": []map[string]any{{"slotNumber": 1, "qtyAfter": 3}}}
-	var a, b core.RestockSaved
+	var a, b savedReply
 	e.mustOK(e.asOperator(key, tok, "POST", "/api/machine/restock-sessions", same), &a)
 	e.mustOK(e.asOperator(key, tok, "POST", "/api/machine/restock-sessions", same), &b)
 	e.mustOK(e.asAdmin("GET", "/api/admin/restock-sessions", nil), &page)
@@ -107,7 +107,7 @@ func TestTC17_TC18_PlannedChange(t *testing.T) {
 
 	e.createOperator("budi", "budi123")
 	tok := e.operatorLogin(key, "budi", "budi123")
-	var slots core.OperatorSlots
+	var slots operatorSlotsReply
 	e.mustOK(e.asOperator(key, tok, "GET", "/api/machine/operator/slots", nil), &slots)
 	if slots.Slots[0].NextProduct == nil || slots.Slots[0].NextProduct.ID != b {
 		t.Fatal("the restock screen must show the planned change")

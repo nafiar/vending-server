@@ -56,6 +56,21 @@ func (mr *MockRepositoryMockRecorder) ListByMachine(ctx, machineID any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByMachine", reflect.TypeOf((*MockRepository)(nil).ListByMachine), ctx, machineID)
 }
 
+// LockAllByMachine mocks base method.
+func (m *MockRepository) LockAllByMachine(ctx context.Context, machineID int64) ([]model.Slot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockAllByMachine", ctx, machineID)
+	ret0, _ := ret[0].([]model.Slot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockAllByMachine indicates an expected call of LockAllByMachine.
+func (mr *MockRepositoryMockRecorder) LockAllByMachine(ctx, machineID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockAllByMachine", reflect.TypeOf((*MockRepository)(nil).LockAllByMachine), ctx, machineID)
+}
+
 // LockForUpdate mocks base method.
 func (m *MockRepository) LockForUpdate(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error) {
 	m.ctrl.T.Helper()
@@ -83,6 +98,20 @@ func (m *MockRepository) MarkNeedsCheck(ctx context.Context, slotID int64) error
 func (mr *MockRepositoryMockRecorder) MarkNeedsCheck(ctx, slotID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkNeedsCheck", reflect.TypeOf((*MockRepository)(nil).MarkNeedsCheck), ctx, slotID)
+}
+
+// Restock mocks base method.
+func (m *MockRepository) Restock(ctx context.Context, slotID int64, productID *int64, qty int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Restock", ctx, slotID, productID, qty)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Restock indicates an expected call of Restock.
+func (mr *MockRepositoryMockRecorder) Restock(ctx, slotID, productID, qty any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restock", reflect.TypeOf((*MockRepository)(nil).Restock), ctx, slotID, productID, qty)
 }
 
 // TakeOne mocks base method.

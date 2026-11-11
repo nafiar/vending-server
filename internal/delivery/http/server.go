@@ -29,6 +29,7 @@ import (
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	"vending/internal/usecase/purchase"
+	"vending/internal/usecase/restock"
 )
 
 // Server routes requests to the usecases.
@@ -49,6 +50,7 @@ type UseCases struct {
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
 	Purchase purchase.UseCase
+	Restock  restock.UseCase
 }
 
 // Options are the server's settings and optional features.

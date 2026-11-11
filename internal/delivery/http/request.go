@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"vending/internal/model"
 )
@@ -102,6 +103,29 @@ func logLevelFor(path string) slog.Level {
 		return slog.LevelInfo
 	}
 	return slog.LevelDebug
+}
+
+// rawInt reads a JSON value that must be a whole number: 3 is accepted, while
+// "3", 2.5, null and a missing value are not. It is used where reading a bad
+// value as zero would silently change what an operator typed.
+func rawInt(raw json.RawMessage) (int64, bool) {
+	v, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+	return v, err == nil
+}
+
+// rawTime reads a time sent either as an ISO 8601 string, which is what the
+// kiosk sends, or as Unix milliseconds, which is what a visit journaled while
+// offline carries.
+func rawTime(raw json.RawMessage) (time.Time, bool) {
+	var str string
+	if err := json.Unmarshal(raw, &str); err == nil {
+		t, err := time.Parse(time.RFC3339Nano, str)
+		return t.UTC().Truncate(time.Millisecond), err == nil
+	}
+	if v, ok := rawInt(raw); ok {
+		return time.UnixMilli(v).UTC(), true
+	}
+	return time.Time{}, false
 }
 
 // intField reads a whole number sent as JSON. The admin web and the kiosk send

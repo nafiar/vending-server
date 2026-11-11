@@ -24,8 +24,12 @@ import (
 	"vending/internal/repository/machine"
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	"vending/internal/repository/restock"
+	restockmysql "vending/internal/repository/restock/mysql"
 	"vending/internal/repository/session"
 	sessionmysql "vending/internal/repository/session/mysql"
+	"vending/internal/repository/slot"
+	slotmysql "vending/internal/repository/slot/mysql"
 	"vending/internal/repository/transaction"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
@@ -33,6 +37,7 @@ import (
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
 	"vending/internal/usecase/purchase"
+	restockuc "vending/internal/usecase/restock"
 )
 
 // Deps is the built graph.
@@ -44,12 +49,15 @@ type Deps struct {
 	Machines     machine.Repository
 	Transactions transaction.Repository
 	Sessions     session.Repository
+	Slots        slot.Repository
+	Restocks     restock.Repository
 	Images       imagestore.Repository
 
 	// usecases
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
 	Purchase purchase.UseCase
+	Restock  restockuc.UseCase
 }
 
 // Wire builds the graph. Settings in, usable system out. now is the clock the
@@ -62,6 +70,8 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Machines = machinemysql.New(db)
 	d.Transactions = transactionmysql.New(db)
 	d.Sessions = sessionmysql.New(db)
+	d.Slots = slotmysql.New(db)
+	d.Restocks = restockmysql.New(db)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
 	cl := clock.New(now)
@@ -71,10 +81,13 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	// A refused stale purchase answers with the fresh catalog, so purchase
 	// depends on the catalog usecase rather than reading the slots again itself.
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
+	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
 	return d
 }
 
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() deliveryhttp.UseCases {
-	return deliveryhttp.UseCases{Auth: d.Auth, Catalog: d.Catalog, Purchase: d.Purchase}
+	return deliveryhttp.UseCases{
+		Auth: d.Auth, Catalog: d.Catalog, Purchase: d.Purchase, Restock: d.Restock,
+	}
 }

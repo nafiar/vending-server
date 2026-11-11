@@ -7,12 +7,14 @@ import (
 
 	machinemysql "vending/internal/repository/machine/mysql"
 	"vending/internal/repository/mysqldb"
+	restockmysql "vending/internal/repository/restock/mysql"
 	slotmysql "vending/internal/repository/slot/mysql"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
 	usermysql "vending/internal/repository/user/mysql"
 
 	"vending/internal/repository/machine"
+	"vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/user"
@@ -46,3 +48,4 @@ func (b bundle) Machines() machine.Repository         { return machinemysql.New(
 func (b bundle) Slots() slot.Repository               { return slotmysql.New(b.q) }
 func (b bundle) Transactions() transaction.Repository { return transactionmysql.New(b.q) }
 func (b bundle) Users() user.Repository               { return usermysql.New(b.q) }
+func (b bundle) Restocks() restock.Repository         { return restockmysql.New(b.q) }

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
 )
 
 func (s *MySQL) LockForUpdate(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error) {
@@ -42,5 +43,59 @@ func (s *MySQL) TakeOne(ctx context.Context, slotID int64) (bool, error) {
 
 func (s *MySQL) MarkNeedsCheck(ctx context.Context, slotID int64) error {
 	_, err := s.q.ExecContext(ctx, `UPDATE slots SET needs_check = TRUE WHERE id = ?`, slotID)
+	return err
+}
+
+func (s *MySQL) LockAllByMachine(ctx context.Context, machineID int64) ([]model.Slot, error) {
+	// The lock is taken on the plain slots rows first, in slot order, for the
+	// reason LockForUpdate gives: a FOR UPDATE over the product joins would
+	// lock products too. The ordered id read is what fixes the lock order.
+	rows, err := s.q.QueryContext(ctx,
+		`SELECT id FROM slots WHERE machine_id = ? ORDER BY slot_number FOR UPDATE`, machineID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return []model.Slot{}, nil
+	}
+	// Now the full rows, which the locks above already hold.
+	return s.listByIDs(ctx, ids)
+}
+
+func (s *MySQL) listByIDs(ctx context.Context, ids []int64) ([]model.Slot, error) {
+	rows, err := s.q.QueryContext(ctx,
+		byIDsQuery+mysqldb.Placeholders(len(ids))+`) ORDER BY s.slot_number`, mysqldb.Args(ids)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]model.Slot, 0, len(ids))
+	for rows.Next() {
+		sl, err := scanSlot(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sl)
+	}
+	return out, rows.Err()
+}
+
+func (s *MySQL) Restock(ctx context.Context, slotID int64, productID *int64, qty int) error {
+	_, err := s.q.ExecContext(ctx, `UPDATE slots
+		SET product_id = ?, next_product_id = NULL, qty = ?, needs_check = FALSE
+		WHERE id = ?`, productID, qty, slotID)
 	return err
 }

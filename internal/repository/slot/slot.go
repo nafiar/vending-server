@@ -34,4 +34,20 @@ type Repository interface {
 	// MarkNeedsCheck blocks a slot until an operator's next visit, after a
 	// dispense the machine could not complete (BR-07, TC-06).
 	MarkNeedsCheck(ctx context.Context, slotID int64) error
+
+	// LockAllByMachine is ListByMachine holding an exclusive lock on every slot
+	// row of the machine until the unit of work ends, in slot order.
+	//
+	// An operator visit rewrites all of them together, so it takes all of them
+	// at once; the fixed order means two visits to one machine queue rather
+	// than deadlock. The machine is locked first (see repository/machine).
+	LockAllByMachine(ctx context.Context, machineID int64) ([]model.Slot, error)
+
+	// Restock sets what a slot holds and how many are in it, clears any planned
+	// product change, and unblocks the slot: everything an operator's visit
+	// decides about one slot, in one statement, because they are one fact
+	// (FR-15, FR-16).
+	//
+	// productID is nil for a slot left empty.
+	Restock(ctx context.Context, slotID int64, productID *int64, qty int) error
 }

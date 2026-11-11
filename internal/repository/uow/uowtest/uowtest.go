@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"vending/internal/repository/machine"
+	"vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/uow"
@@ -32,6 +33,7 @@ type Bundle struct {
 	SlotRepo        slot.Repository
 	TransactionRepo transaction.Repository
 	UserRepo        user.Repository
+	RestockRepo     restock.Repository
 
 	// Attempts counts how often a unit of work has been opened, of either kind,
 	// so a test can assert that a retry did or did not happen, or that a read
@@ -69,3 +71,4 @@ func (b *Bundle) Machines() machine.Repository         { return b.MachineRepo }
 func (b *Bundle) Slots() slot.Repository               { return b.SlotRepo }
 func (b *Bundle) Transactions() transaction.Repository { return b.TransactionRepo }
 func (b *Bundle) Users() user.Repository               { return b.UserRepo }
+func (b *Bundle) Restocks() restock.Repository         { return b.RestockRepo }

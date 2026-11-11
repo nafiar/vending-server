@@ -40,6 +40,14 @@ type Repository interface {
 	// readers may take the same shared lock; a writer waits.
 	LockShared(ctx context.Context, id int64) (model.MachineRecord, error)
 
+	// LockForUpdate reads one machine and holds an exclusive lock on its row
+	// until the unit of work ends, so nothing else may read or change it.
+	//
+	// An operator visit takes this rather than LockShared: it is about to raise
+	// the catalog version, and the exclusive lock is also what makes two sends
+	// of the same visit queue instead of both deciding they are the first.
+	LockForUpdate(ctx context.Context, id int64) (model.MachineRecord, error)
+
 	// BumpCatalogVersion raises this machine's catalog version by one, which is
 	// how every kiosk is told that what it is showing is out of date (FR-04).
 	//

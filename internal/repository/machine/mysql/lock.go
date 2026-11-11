@@ -19,6 +19,14 @@ func (s *MySQL) LockShared(ctx context.Context, id int64) (model.MachineRecord, 
 	return m, err
 }
 
+func (s *MySQL) LockForUpdate(ctx context.Context, id int64) (model.MachineRecord, error) {
+	m, err := scan(s.q.QueryRowContext(ctx, `SELECT `+columns+` FROM machines WHERE id = ? FOR UPDATE`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.MachineRecord{}, model.ErrNoRecord
+	}
+	return m, err
+}
+
 func (s *MySQL) BumpCatalogVersion(ctx context.Context, id int64) error {
 	_, err := s.q.ExecContext(ctx, `UPDATE machines SET catalog_version = catalog_version + 1 WHERE id = ?`, id)
 	return err

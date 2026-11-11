@@ -241,13 +241,13 @@ func (e *env) operatorLogin(key, username, password string) string {
 }
 
 // restock runs one visit that sets each listed slot to its count.
-func (e *env) restock(key, token string, counts map[int]int) core.RestockSaved {
+func (e *env) restock(key, token string, counts map[int]int) savedReply {
 	e.t.Helper()
 	items := []map[string]any{}
 	for n, q := range counts {
 		items = append(items, map[string]any{"slotNumber": n, "qtyAfter": q})
 	}
-	var r core.RestockSaved
+	var r savedReply
 	e.mustOK(e.asOperator(key, token, "POST", "/api/machine/restock-sessions", map[string]any{"id": security.NewUUID(), "items": items}), &r)
 	return r
 }
@@ -405,4 +405,38 @@ type meReply struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 	DemoMode bool   `json:"demoMode"`
+}
+
+// savedReply and operatorSlotsReply are what the kiosk's restock screen reads,
+// declared here rather than imported, for the reason catalogReply gives.
+type savedReply struct {
+	ID             string `json:"id"`
+	SessionID      int64  `json:"sessionId"`
+	SavedAt        int64  `json:"savedAt"`
+	CatalogVersion int64  `json:"catalogVersion"`
+}
+
+type slotReply struct {
+	SlotNumber int  `json:"slotNumber"`
+	Capacity   int  `json:"capacity"`
+	Qty        int  `json:"qty"`
+	NeedsCheck bool `json:"needsCheck"`
+	Product    *struct {
+		ID    int64  `json:"id"`
+		Name  string `json:"name"`
+		Price int64  `json:"price"`
+	} `json:"product"`
+	NextProduct *struct {
+		ID    int64  `json:"id"`
+		Name  string `json:"name"`
+		Price int64  `json:"price"`
+	} `json:"nextProduct"`
+}
+
+type operatorSlotsReply struct {
+	Machine struct {
+		Code string `json:"code"`
+		Name string `json:"name"`
+	} `json:"machine"`
+	Slots []slotReply `json:"slots"`
 }

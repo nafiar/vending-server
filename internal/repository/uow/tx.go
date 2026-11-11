@@ -2,6 +2,7 @@ package uow
 
 import (
 	"vending/internal/repository/machine"
+	"vending/internal/repository/restock"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/user"
@@ -22,4 +23,5 @@ type Tx interface {
 	Slots() slot.Repository
 	Transactions() transaction.Repository
 	Users() user.Repository
+	Restocks() restock.Repository
 }

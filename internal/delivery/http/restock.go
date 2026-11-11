@@ -3,7 +3,6 @@ package http
 import (
 	"net/http"
 
-	"vending/internal/core"
 	"vending/internal/model"
 )
 
@@ -27,13 +26,21 @@ func (s *Server) operatorLogout(w http.ResponseWriter, r *http.Request, m model.
 }
 
 func (s *Server) operatorSlots(w http.ResponseWriter, r *http.Request, m model.Machine, p model.Principal) (any, error) {
-	return s.svc.OperatorSlots(r.Context(), m)
+	ms, err := s.uc.Restock.Slots(r.Context(), m)
+	if err != nil {
+		return nil, err
+	}
+	return operatorSlotsView(ms), nil
 }
 
 func (s *Server) saveRestock(w http.ResponseWriter, r *http.Request, m model.Machine, p model.Principal) (any, error) {
-	var in core.RestockInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
+	var b restockBody
+	if err := decode(w, r, &b, defaultBodyLimit); err != nil {
 		return nil, err
 	}
-	return s.svc.SaveRestock(r.Context(), m, p, in)
+	saved, err := s.uc.Restock.Save(r.Context(), m, p, b.input())
+	if err != nil {
+		return nil, err
+	}
+	return restockSavedView(saved), nil
 }
