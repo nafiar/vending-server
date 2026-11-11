@@ -102,6 +102,81 @@ func (mr *MockRepositoryMockRecorder) OperatorVisits(ctx, since any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OperatorVisits", reflect.TypeOf((*MockRepository)(nil).OperatorVisits), ctx, since)
 }
 
+// RecapTotals mocks base method.
+func (m *MockRepository) RecapTotals(ctx context.Context, f model.ReportFilter) (model.RecapTotals, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecapTotals", ctx, f)
+	ret0, _ := ret[0].(model.RecapTotals)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RecapTotals indicates an expected call of RecapTotals.
+func (mr *MockRepositoryMockRecorder) RecapTotals(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecapTotals", reflect.TypeOf((*MockRepository)(nil).RecapTotals), ctx, f)
+}
+
+// RevenueByLocalDay mocks base method.
+func (m *MockRepository) RevenueByLocalDay(ctx context.Context, f model.ReportFilter, offsetSeconds int) (map[string]model.Totals, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevenueByLocalDay", ctx, f, offsetSeconds)
+	ret0, _ := ret[0].(map[string]model.Totals)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevenueByLocalDay indicates an expected call of RevenueByLocalDay.
+func (mr *MockRepositoryMockRecorder) RevenueByLocalDay(ctx, f, offsetSeconds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevenueByLocalDay", reflect.TypeOf((*MockRepository)(nil).RevenueByLocalDay), ctx, f, offsetSeconds)
+}
+
+// RevenueByMachine mocks base method.
+func (m *MockRepository) RevenueByMachine(ctx context.Context, f model.ReportFilter) ([]model.MachineRevenue, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevenueByMachine", ctx, f)
+	ret0, _ := ret[0].([]model.MachineRevenue)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevenueByMachine indicates an expected call of RevenueByMachine.
+func (mr *MockRepositoryMockRecorder) RevenueByMachine(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevenueByMachine", reflect.TypeOf((*MockRepository)(nil).RevenueByMachine), ctx, f)
+}
+
+// RevenueByProduct mocks base method.
+func (m *MockRepository) RevenueByProduct(ctx context.Context, f model.ReportFilter) ([]model.ProductRevenue, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevenueByProduct", ctx, f)
+	ret0, _ := ret[0].([]model.ProductRevenue)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevenueByProduct indicates an expected call of RevenueByProduct.
+func (mr *MockRepositoryMockRecorder) RevenueByProduct(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevenueByProduct", reflect.TypeOf((*MockRepository)(nil).RevenueByProduct), ctx, f)
+}
+
+// RevenueBySlot mocks base method.
+func (m *MockRepository) RevenueBySlot(ctx context.Context, f model.ReportFilter) ([]model.SlotRevenue, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevenueBySlot", ctx, f)
+	ret0, _ := ret[0].([]model.SlotRevenue)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevenueBySlot indicates an expected call of RevenueBySlot.
+func (mr *MockRepositoryMockRecorder) RevenueBySlot(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevenueBySlot", reflect.TypeOf((*MockRepository)(nil).RevenueBySlot), ctx, f)
+}
+
 // SlotStats mocks base method.
 func (m *MockRepository) SlotStats(ctx context.Context, machineID int64) (map[int64]model.SlotStats, error) {
 	m.ctrl.T.Helper()
@@ -115,4 +190,19 @@ func (m *MockRepository) SlotStats(ctx context.Context, machineID int64) (map[in
 func (mr *MockRepositoryMockRecorder) SlotStats(ctx, machineID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SlotStats", reflect.TypeOf((*MockRepository)(nil).SlotStats), ctx, machineID)
+}
+
+// Summary mocks base method.
+func (m *MockRepository) Summary(ctx context.Context, w model.SummaryWindows, machineID int64) (model.Summary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Summary", ctx, w, machineID)
+	ret0, _ := ret[0].(model.Summary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Summary indicates an expected call of Summary.
+func (mr *MockRepositoryMockRecorder) Summary(ctx, w, machineID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Summary", reflect.TypeOf((*MockRepository)(nil).Summary), ctx, w, machineID)
 }

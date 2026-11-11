@@ -495,3 +495,56 @@ type operatorReply struct {
 	LastVisitMachine *string `json:"lastVisitMachine"`
 	Visits30         int64   `json:"visits30"`
 }
+
+// recapReply and summaryReply are the revenue figures as the admin web reads
+// them, declared here rather than imported, for the reason catalogReply gives.
+type totalsReply struct {
+	Revenue int64 `json:"revenue"`
+	Sales   int64 `json:"sales"`
+}
+
+type summaryReply struct {
+	Today             totalsReply `json:"today"`
+	SameTimeYesterday totalsReply `json:"sameTimeYesterday"`
+	Last7             totalsReply `json:"last7"`
+	Month             totalsReply `json:"month"`
+}
+
+type breakdownReply struct {
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Revenue int64  `json:"revenue"`
+	Sales   int64  `json:"sales"`
+}
+
+type recapReply struct {
+	From      string           `json:"from"`
+	To        string           `json:"to"`
+	GroupBy   string           `json:"groupBy"`
+	Breakdown []breakdownReply `json:"breakdown"`
+	Totals    struct {
+		Revenue   int64 `json:"revenue"`
+		Sales     int64 `json:"sales"`
+		Failed    int64 `json:"failed"`
+		Reported  int64 `json:"reported"`
+		Cancelled int64 `json:"cancelled"`
+	} `json:"totals"`
+	Series []struct {
+		Period  string `json:"period"`
+		Start   int64  `json:"start"`
+		Revenue int64  `json:"revenue"`
+		Sales   int64  `json:"sales"`
+	} `json:"series"`
+	ByMachine []struct {
+		MachineID  int64  `json:"machineId"`
+		Code       string `json:"code"`
+		Name       string `json:"name"`
+		Location   string `json:"location"`
+		IsActive   bool   `json:"isActive"`
+		Revenue    int64  `json:"revenue"`
+		Sales      int64  `json:"sales"`
+		LastSaleAt *int64 `json:"lastSaleAt"`
+		LastSeenAt *int64 `json:"lastSeenAt"`
+	} `json:"byMachine"`
+	TopProducts []breakdownReply `json:"topProducts"`
+}

@@ -46,6 +46,7 @@ import (
 	"vending/internal/usecase/operator"
 	productuc "vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
+	"vending/internal/usecase/recap"
 	restockuc "vending/internal/usecase/restock"
 )
 
@@ -75,6 +76,7 @@ type Deps struct {
 	OperatorConsole operator.Console
 	Product         productuc.UseCase
 	Purchase        purchase.UseCase
+	Recap           recap.UseCase
 	Restock         restockuc.UseCase
 }
 
@@ -103,6 +105,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	// depends on the catalog usecase rather than reading the slots again itself.
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
 	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
+	d.Recap = recap.New(d.Reports, cl, cfg.Location, log)
 	d.Product = productuc.New(d.UOW, d.Products, d.Images, cl, log)
 	d.Machine = machineuc.New(d.UOW, d.Machines, d.Slots, d.Reports, cl, cfg.Location, log)
 	ops := operator.New(d.UOW, d.Users, d.Reports, cl, cfg.Location, log)
@@ -114,7 +117,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 func (d Deps) UseCases() deliveryhttp.UseCases {
 	return deliveryhttp.UseCases{
 		Auth: d.Auth, Catalog: d.Catalog, Machine: d.Machine,
-		Operator: d.Operator, Product: d.Product,
+		Operator: d.Operator, Product: d.Product, Recap: d.Recap,
 		Purchase: d.Purchase, Restock: d.Restock,
 	}
 }

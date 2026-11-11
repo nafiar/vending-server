@@ -43,27 +43,6 @@ func (s *Server) demoReset(w http.ResponseWriter, r *http.Request, p model.Princ
 	return map[string]bool{"ok": true}, nil
 }
 
-func (s *Server) summary(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	q := newQuery(r)
-	machineID := q.int("machineId")
-	if err := q.err(); err != nil {
-		return nil, err
-	}
-	return s.svc.GetSummary(r.Context(), machineID)
-}
-
-func (s *Server) recap(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	q := newQuery(r)
-	in := core.RecapQuery{
-		From: q.str("from"), To: q.str("to"), MachineID: q.int("machineId"),
-		GroupBy: q.str("groupBy"), Breakdown: q.str("breakdown"),
-	}
-	if err := q.err(); err != nil {
-		return nil, err
-	}
-	return s.svc.GetRecap(r.Context(), in)
-}
-
 func (s *Server) transactions(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
 	q := newQuery(r)
 	in := core.TransactionQuery{

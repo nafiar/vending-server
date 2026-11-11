@@ -214,7 +214,7 @@ func TestTC29_TC30_Recap(t *testing.T) {
 	e.buy(k1, 1)
 	e.relogin()
 
-	var r core.Recap
+	var r recapReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/recap?from=2026-10-01&to=2026-10-31&groupBy=week", nil), &r)
 	want := int64(10000 + 25000 + 25000 + 10000 + 25000 + 10000)
 	if r.Totals.Revenue != want || r.Totals.Sales != 6 || r.Totals.Failed != 1 || r.Totals.Cancelled != 2 {
@@ -247,7 +247,7 @@ func TestTC29_TC30_Recap(t *testing.T) {
 	}
 
 	// The summary tiles: today is day nine, with one sale.
-	var s core.Summary
+	var s summaryReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/recap/summary", nil), &s)
 	if s.Today.Sales != 1 || s.Today.Revenue != 10000 || s.Month.Revenue != want || s.Last7.Sales != 1 {
 		t.Fatalf("summary: %+v", s)

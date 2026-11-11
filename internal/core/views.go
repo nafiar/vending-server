@@ -33,58 +33,6 @@ type Totals struct {
 
 // ---------------------------------------------------------------- admin
 
-type Summary struct {
-	Today             Totals `json:"today"`
-	SameTimeYesterday Totals `json:"sameTimeYesterday"`
-	Last7             Totals `json:"last7"`
-	Month             Totals `json:"month"`
-}
-
-type RecapTotals struct {
-	Revenue   int64 `json:"revenue"`
-	Sales     int64 `json:"sales"`
-	Failed    int64 `json:"failed"`
-	Reported  int64 `json:"reported"`
-	Cancelled int64 `json:"cancelled"` // CANCELLED and EXPIRED
-}
-
-type SeriesPoint struct {
-	Period  string `json:"period"` // 2026-10-22, 2026-10-19 (the Monday of the week) or 2026-10
-	Start   int64  `json:"start"`
-	Revenue int64  `json:"revenue"`
-	Sales   int64  `json:"sales"`
-}
-
-type MachineRecap struct {
-	MachineID  int64  `json:"machineId"`
-	Code       string `json:"code"`
-	Name       string `json:"name"`
-	Location   string `json:"location"`
-	IsActive   bool   `json:"isActive"`
-	Revenue    int64  `json:"revenue"`
-	Sales      int64  `json:"sales"`
-	LastSaleAt *int64 `json:"lastSaleAt"`
-	LastSeenAt *int64 `json:"lastSeenAt"`
-}
-
-type BreakdownRow struct {
-	Key     string `json:"key"`
-	Label   string `json:"label"`
-	Revenue int64  `json:"revenue"`
-	Sales   int64  `json:"sales"`
-}
-
-type Recap struct {
-	From        string         `json:"from"`
-	To          string         `json:"to"`
-	GroupBy     string         `json:"groupBy"`
-	Breakdown   []BreakdownRow `json:"breakdown"`
-	Totals      RecapTotals    `json:"totals"`
-	Series      []SeriesPoint  `json:"series"`
-	ByMachine   []MachineRecap `json:"byMachine"`
-	TopProducts []BreakdownRow `json:"topProducts"`
-}
-
 type TransactionRow struct {
 	ID                 string     `json:"id"`
 	CreatedAt          int64      `json:"createdAt"`

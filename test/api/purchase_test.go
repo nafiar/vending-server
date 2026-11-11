@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"vending/internal/common/security"
-	"vending/internal/core"
 )
 
 // TC-01: a whole purchase turns one coil, ends DISPENSED, lowers the count and
@@ -44,7 +43,7 @@ func TestTC01_Purchase(t *testing.T) {
 	if page.Total != 1 || page.DispensedRevenue != 25000 || page.Rows[0].ID != id {
 		t.Fatalf("history: %+v", page)
 	}
-	var recap core.Recap
+	var recap recapReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/recap", nil), &recap)
 	if recap.Totals.Revenue != 25000 || recap.Totals.Sales != 1 {
 		t.Fatalf("recap totals: %+v", recap.Totals)

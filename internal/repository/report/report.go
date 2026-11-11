@@ -43,4 +43,31 @@ type Repository interface {
 	// OperatorLastVisit is each user's most recent visit, with the machine it
 	// was to. A user who has never restocked anything is absent.
 	OperatorLastVisit(ctx context.Context) (map[int64]model.Visit, error)
+
+	// Summary answers the four tiles on the admin home in one query (FR-17).
+	Summary(ctx context.Context, w model.SummaryWindows, machineID int64) (model.Summary, error)
+
+	// RecapTotals is the recap's headline figures over one span: what was
+	// earned, and what needs looking at.
+	RecapTotals(ctx context.Context, f model.ReportFilter) (model.RecapTotals, error)
+
+	// RevenueByLocalDay sums revenue per local calendar day, keyed by the day in
+	// YYYY-MM-DD. offsetSeconds is the zone's offset from UTC, which the query
+	// shifts created_at by so that the grouping is by local day.
+	//
+	// It is always by day, never by week or month: folding days into larger
+	// buckets is calendar arithmetic, and the caller does it, so that a week
+	// starting on Monday stays one idea in one place.
+	RevenueByLocalDay(ctx context.Context, f model.ReportFilter, offsetSeconds int) (map[string]model.Totals, error)
+
+	// RevenueByMachine is each machine's revenue over the span, with the
+	// machine's own details, so the recap table needs no second lookup. Every
+	// machine appears, including the ones that sold nothing.
+	RevenueByMachine(ctx context.Context, f model.ReportFilter) ([]model.MachineRevenue, error)
+
+	// RevenueByProduct is each product's revenue over the span, best first.
+	RevenueByProduct(ctx context.Context, f model.ReportFilter) ([]model.ProductRevenue, error)
+
+	// RevenueBySlot is each slot's revenue over the span, best first.
+	RevenueBySlot(ctx context.Context, f model.ReportFilter) ([]model.SlotRevenue, error)
 }

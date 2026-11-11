@@ -32,6 +32,7 @@ import (
 	"vending/internal/usecase/operator"
 	"vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
+	"vending/internal/usecase/recap"
 	"vending/internal/usecase/restock"
 )
 
@@ -56,6 +57,7 @@ type UseCases struct {
 	Operator operator.UseCase
 	Product  product.UseCase
 	Purchase purchase.UseCase
+	Recap    recap.UseCase
 	Restock  restock.UseCase
 }
 
