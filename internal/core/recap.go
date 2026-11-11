@@ -137,8 +137,8 @@ func (s *Service) GetRecap(ctx context.Context, q RecapQuery) (Recap, error) {
 		return Recap{}, err
 	}
 	for _, p := range periods(r, q.GroupBy) {
-		pt := SeriesPoint{Period: p.key, Start: ms(p.start)}
-		if b := buckets[p.key]; b != nil {
+		pt := SeriesPoint{Period: p.Key, Start: ms(p.Start)}
+		if b := buckets[p.Key]; b != nil {
 			pt.Revenue, pt.Sales = b.Revenue, b.Sales
 		}
 		out.Series = append(out.Series, pt)
