@@ -6,6 +6,12 @@ and the agent share one layout, one port/adapter pattern and one testing story.
 
 Module path stays `vending`. No behaviour change, no wire-contract change.
 
+> **Status: done.** Phases 0 to 9 are complete; `internal/core`, `internal/httpapi`
+> and `internal/seed` no longer exist, and the escape-hatch table in §7 is empty.
+> This document is kept as the record of what the code looked like before, what
+> was decided and why, and what the risks were. For the rules the code is held
+> to **now**, read [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ---
 
 ## 0. Where the code is today
