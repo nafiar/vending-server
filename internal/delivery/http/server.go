@@ -28,6 +28,7 @@ import (
 	"vending/internal/core"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
+	machineuc "vending/internal/usecase/machine"
 	"vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
 	"vending/internal/usecase/restock"
@@ -50,6 +51,7 @@ type Server struct {
 type UseCases struct {
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
+	Machine  machineuc.UseCase
 	Product  product.UseCase
 	Purchase purchase.UseCase
 	Restock  restock.UseCase

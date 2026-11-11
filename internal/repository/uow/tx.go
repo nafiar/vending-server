@@ -5,6 +5,7 @@ import (
 	"vending/internal/repository/machine"
 	"vending/internal/repository/product"
 	"vending/internal/repository/restock"
+	"vending/internal/repository/session"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/user"
@@ -27,6 +28,7 @@ type Tx interface {
 	Users() user.Repository
 	Restocks() restock.Repository
 	Products() product.Repository
+	Sessions() session.Repository
 	// Audit is in this bundle and nowhere else: a change-log row has to commit
 	// with the change it records (FR-26).
 	Audit() audit.Repository

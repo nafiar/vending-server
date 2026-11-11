@@ -29,6 +29,15 @@ type Repository interface {
 	// "before" and nothing can change them in between.
 	LockForUpdate(ctx context.Context, id int64) (model.Product, error)
 
+	// LockShared reads one product and holds a shared lock on its row until the
+	// unit of work ends, so it cannot be archived while a rule is acting on the
+	// fact that it is active.
+	//
+	// Planning a product into a slot takes this: an archive of the same product
+	// then waits until the plan is saved, and sees it, rather than the two
+	// deciding at once that each is fine (BR-10).
+	LockShared(ctx context.Context, id int64) (model.Product, error)
+
 	// Create adds a product and returns its id. It reads Name, Description,
 	// Price, ImageURL, CreatedAt and UpdatedAt; a new product is always active.
 	Create(ctx context.Context, p model.Product) (int64, error)

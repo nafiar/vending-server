@@ -41,6 +41,16 @@ const byIDQuery = `
 	LEFT JOIN products n ON n.id = s.next_product_id
 	WHERE s.id = ?`
 
+// byNumberQuery is the same row, read by machine and slot number.
+const byNumberQuery = `
+	SELECT s.id, s.machine_id, s.slot_number, s.capacity, s.qty, s.needs_check,
+	       p.id, p.name, p.description, p.price, p.image_url, p.is_active,
+	       n.id, n.name, n.description, n.price, n.image_url, n.is_active
+	FROM slots s
+	LEFT JOIN products p ON p.id = s.product_id
+	LEFT JOIN products n ON n.id = s.next_product_id
+	WHERE s.machine_id = ? AND s.slot_number = ?`
+
 // byIDsQuery is the same rows, read by a set of slot ids. The caller closes the
 // IN list and adds the ordering.
 const byIDsQuery = `

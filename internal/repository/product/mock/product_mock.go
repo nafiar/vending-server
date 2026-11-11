@@ -102,6 +102,21 @@ func (mr *MockRepositoryMockRecorder) LockForUpdate(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockForUpdate", reflect.TypeOf((*MockRepository)(nil).LockForUpdate), ctx, id)
 }
 
+// LockShared mocks base method.
+func (m *MockRepository) LockShared(ctx context.Context, id int64) (model.Product, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockShared", ctx, id)
+	ret0, _ := ret[0].(model.Product)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockShared indicates an expected call of LockShared.
+func (mr *MockRepositoryMockRecorder) LockShared(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockShared", reflect.TypeOf((*MockRepository)(nil).LockShared), ctx, id)
+}
+
 // SetActive mocks base method.
 func (m *MockRepository) SetActive(ctx context.Context, id int64, active bool, at time.Time) error {
 	m.ctrl.T.Helper()

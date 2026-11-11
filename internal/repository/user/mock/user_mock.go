@@ -56,6 +56,21 @@ func (mr *MockRepositoryMockRecorder) ClearFailedLogins(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearFailedLogins", reflect.TypeOf((*MockRepository)(nil).ClearFailedLogins), ctx, id)
 }
 
+// FirstActiveAdminID mocks base method.
+func (m *MockRepository) FirstActiveAdminID(ctx context.Context) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FirstActiveAdminID", ctx)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FirstActiveAdminID indicates an expected call of FirstActiveAdminID.
+func (mr *MockRepositoryMockRecorder) FirstActiveAdminID(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FirstActiveAdminID", reflect.TypeOf((*MockRepository)(nil).FirstActiveAdminID), ctx)
+}
+
 // LockForUpdate mocks base method.
 func (m *MockRepository) LockForUpdate(ctx context.Context, username string) (model.User, error) {
 	m.ctrl.T.Helper()

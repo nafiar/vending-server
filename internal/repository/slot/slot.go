@@ -43,6 +43,23 @@ type Repository interface {
 	// than deadlock. The machine is locked first (see repository/machine).
 	LockAllByMachine(ctx context.Context, machineID int64) ([]model.Slot, error)
 
+	// CreateMany adds a machine's slots, numbered 1..count, all empty and all
+	// with the same capacity. It is called once, when the machine is
+	// registered: slots are not added or removed afterwards, because the
+	// machine's coils do not change (FR-21).
+	CreateMany(ctx context.Context, machineID int64, count, capacity int) error
+
+	// Get returns one slot of one machine with the products it holds and plans,
+	// or an error wrapping model.ErrNoRecord. It takes no lock.
+	Get(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error)
+
+	// SetPlan changes a slot's capacity and the product planned for it (FR-22).
+	//
+	// The plan takes effect at the next operator visit and not before, so the
+	// kiosk goes on showing and selling what is actually in the coil (BR-08,
+	// TC-18). nextProductID is nil for no planned change.
+	SetPlan(ctx context.Context, slotID int64, capacity int, nextProductID *int64) error
+
 	// MachineIDsHolding returns the ids of the machines that have this product
 	// loaded in a slot right now, so their kiosks can be told to reload after
 	// its price or name changed (BR-09, TC-10).

@@ -38,4 +38,12 @@ type Repository interface {
 	// ClearFailedLogins forgets the wrong passwords and any lock, after one
 	// that was right.
 	ClearFailedLogins(ctx context.Context, id int64) error
+
+	// FirstActiveAdminID is the lowest-numbered active admin, or an error
+	// wrapping model.ErrNoRecord when there is none.
+	//
+	// It exists for the command-line tools: a change still has to be
+	// attributable to a person in the log (FR-26), and on the command line
+	// there is nobody signed in to attribute it to.
+	FirstActiveAdminID(ctx context.Context) (int64, error)
 }

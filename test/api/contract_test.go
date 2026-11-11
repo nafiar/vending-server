@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"vending/internal/common/security"
-	"vending/internal/core"
 	"vending/internal/seed"
 )
 
@@ -155,7 +154,7 @@ func TestAPIContract(t *testing.T) {
 	capture("GET /api/admin/audit-logs", e.asAdmin("GET", "/api/admin/audit-logs", nil))
 	capture("GET /api/admin/reconcile", e.asAdmin("GET", "/api/admin/reconcile", nil))
 
-	var machines []core.MachineView
+	var machines []machineReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/machines", nil), &machines)
 	if len(machines) == 0 {
 		t.Fatal("the demo seed must register machines")
@@ -165,7 +164,7 @@ func TestAPIContract(t *testing.T) {
 
 	// ---------------------------------------------------------------- admin writes (on throwaway records)
 
-	var prod core.ProductView
+	var prod productReply
 	r = capture("POST /api/admin/products", e.asAdmin("POST", "/api/admin/products", map[string]any{
 		"name": "Produk Kontrak", "description": "dipakai tes kontrak", "price": 7500}))
 	e.mustOK(r, &prod)
@@ -174,7 +173,7 @@ func TestAPIContract(t *testing.T) {
 	capture("POST /api/admin/products/{id}/archive", e.asAdmin("POST", fmt.Sprintf("/api/admin/products/%d/archive", prod.ID), nil))
 	capture("POST /api/admin/products/{id}/restore", e.asAdmin("POST", fmt.Sprintf("/api/admin/products/%d/restore", prod.ID), nil))
 
-	var newMachine core.MachineWithKey
+	var newMachine machineKeyReply
 	r = capture("POST /api/admin/machines", e.asAdmin("POST", "/api/admin/machines", map[string]any{
 		"code": "VM-CT", "name": "Mesin Kontrak", "location": "Lab", "slotCount": 2, "capacity": 10}))
 	e.mustOK(r, &newMachine)

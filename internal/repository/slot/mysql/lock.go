@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
+	"strings"
+
 	"vending/internal/model"
 	"vending/internal/repository/mysqldb"
 )
@@ -119,4 +121,32 @@ func (s *MySQL) MachineIDsHolding(ctx context.Context, productID int64) ([]int64
 		out = append(out, id)
 	}
 	return out, rows.Err()
+}
+
+func (s *MySQL) CreateMany(ctx context.Context, machineID int64, count, capacity int) error {
+	if count <= 0 {
+		return nil
+	}
+	args := make([]any, 0, count*3)
+	for n := 1; n <= count; n++ {
+		args = append(args, machineID, n, capacity)
+	}
+	values := strings.TrimSuffix(strings.Repeat("(?, ?, ?, 0, FALSE),", count), ",")
+	_, err := s.q.ExecContext(ctx, `INSERT INTO slots
+		(machine_id, slot_number, capacity, qty, needs_check) VALUES `+values, args...)
+	return err
+}
+
+func (s *MySQL) Get(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error) {
+	sl, err := scanSlot(s.q.QueryRowContext(ctx, byNumberQuery, machineID, slotNumber))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Slot{}, model.ErrNoRecord
+	}
+	return sl, err
+}
+
+func (s *MySQL) SetPlan(ctx context.Context, slotID int64, capacity int, nextProductID *int64) error {
+	_, err := s.q.ExecContext(ctx,
+		`UPDATE slots SET capacity = ?, next_product_id = ? WHERE id = ?`, capacity, nextProductID, slotID)
+	return err
 }

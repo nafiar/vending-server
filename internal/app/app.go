@@ -26,6 +26,8 @@ import (
 	"vending/internal/repository/mysqldb"
 	"vending/internal/repository/product"
 	productmysql "vending/internal/repository/product/mysql"
+	"vending/internal/repository/report"
+	reportmysql "vending/internal/repository/report/mysql"
 	"vending/internal/repository/restock"
 	restockmysql "vending/internal/repository/restock/mysql"
 	"vending/internal/repository/session"
@@ -38,6 +40,7 @@ import (
 	uowmysql "vending/internal/repository/uow/mysql"
 	"vending/internal/usecase/auth"
 	"vending/internal/usecase/catalog"
+	machineuc "vending/internal/usecase/machine"
 	productuc "vending/internal/usecase/product"
 	"vending/internal/usecase/purchase"
 	restockuc "vending/internal/usecase/restock"
@@ -54,12 +57,14 @@ type Deps struct {
 	Sessions     session.Repository
 	Slots        slot.Repository
 	Products     product.Repository
+	Reports      report.Repository
 	Restocks     restock.Repository
 	Images       imagestore.Repository
 
 	// usecases
 	Auth     auth.UseCase
 	Catalog  catalog.UseCase
+	Machine  machineuc.UseCase
 	Product  productuc.UseCase
 	Purchase purchase.UseCase
 	Restock  restockuc.UseCase
@@ -77,6 +82,7 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Sessions = sessionmysql.New(db)
 	d.Slots = slotmysql.New(db)
 	d.Products = productmysql.New(db)
+	d.Reports = reportmysql.New(db)
 	d.Restocks = restockmysql.New(db)
 	d.Images = imagestorelocal.New(cfg.UploadDir)
 
@@ -89,13 +95,14 @@ func Wire(db *sql.DB, cfg config.Config, log *slog.Logger, now func() time.Time)
 	d.Purchase = purchase.New(d.UOW, d.Transactions, cat, cl, cfg.PaymentWindow, log)
 	d.Restock = restockuc.New(d.UOW, d.Slots, cl, log)
 	d.Product = productuc.New(d.UOW, d.Products, d.Images, cl, log)
+	d.Machine = machineuc.New(d.UOW, d.Machines, d.Slots, d.Reports, cl, cfg.Location, log)
 	return d
 }
 
 // UseCases is what the delivery layer depends on.
 func (d Deps) UseCases() deliveryhttp.UseCases {
 	return deliveryhttp.UseCases{
-		Auth: d.Auth, Catalog: d.Catalog, Product: d.Product,
+		Auth: d.Auth, Catalog: d.Catalog, Machine: d.Machine, Product: d.Product,
 		Purchase: d.Purchase, Restock: d.Restock,
 	}
 }

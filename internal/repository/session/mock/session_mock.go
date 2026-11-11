@@ -85,6 +85,20 @@ func (mr *MockRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRepository)(nil).Delete), ctx, id)
 }
 
+// DeleteByMachine mocks base method.
+func (m *MockRepository) DeleteByMachine(ctx context.Context, machineID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByMachine", ctx, machineID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByMachine indicates an expected call of DeleteByMachine.
+func (mr *MockRepositoryMockRecorder) DeleteByMachine(ctx, machineID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByMachine", reflect.TypeOf((*MockRepository)(nil).DeleteByMachine), ctx, machineID)
+}
+
 // DeleteByTokenHash mocks base method.
 func (m *MockRepository) DeleteByTokenHash(ctx context.Context, tokenHash string) error {
 	m.ctrl.T.Helper()
@@ -97,6 +111,20 @@ func (m *MockRepository) DeleteByTokenHash(ctx context.Context, tokenHash string
 func (mr *MockRepositoryMockRecorder) DeleteByTokenHash(ctx, tokenHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByTokenHash", reflect.TypeOf((*MockRepository)(nil).DeleteByTokenHash), ctx, tokenHash)
+}
+
+// DeleteByUser mocks base method.
+func (m *MockRepository) DeleteByUser(ctx context.Context, userID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUser", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUser indicates an expected call of DeleteByUser.
+func (mr *MockRepositoryMockRecorder) DeleteByUser(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUser", reflect.TypeOf((*MockRepository)(nil).DeleteByUser), ctx, userID)
 }
 
 // TouchSeen mocks base method.

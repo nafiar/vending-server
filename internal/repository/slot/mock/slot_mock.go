@@ -41,6 +41,35 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// CreateMany mocks base method.
+func (m *MockRepository) CreateMany(ctx context.Context, machineID int64, count, capacity int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateMany", ctx, machineID, count, capacity)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateMany indicates an expected call of CreateMany.
+func (mr *MockRepositoryMockRecorder) CreateMany(ctx, machineID, count, capacity any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMany", reflect.TypeOf((*MockRepository)(nil).CreateMany), ctx, machineID, count, capacity)
+}
+
+// Get mocks base method.
+func (m *MockRepository) Get(ctx context.Context, machineID int64, slotNumber int) (model.Slot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, machineID, slotNumber)
+	ret0, _ := ret[0].(model.Slot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockRepositoryMockRecorder) Get(ctx, machineID, slotNumber any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, machineID, slotNumber)
+}
+
 // ListByMachine mocks base method.
 func (m *MockRepository) ListByMachine(ctx context.Context, machineID int64) ([]model.Slot, error) {
 	m.ctrl.T.Helper()
@@ -127,6 +156,20 @@ func (m *MockRepository) Restock(ctx context.Context, slotID int64, productID *i
 func (mr *MockRepositoryMockRecorder) Restock(ctx, slotID, productID, qty any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restock", reflect.TypeOf((*MockRepository)(nil).Restock), ctx, slotID, productID, qty)
+}
+
+// SetPlan mocks base method.
+func (m *MockRepository) SetPlan(ctx context.Context, slotID int64, capacity int, nextProductID *int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPlan", ctx, slotID, capacity, nextProductID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetPlan indicates an expected call of SetPlan.
+func (mr *MockRepositoryMockRecorder) SetPlan(ctx, slotID, capacity, nextProductID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPlan", reflect.TypeOf((*MockRepository)(nil).SetPlan), ctx, slotID, capacity, nextProductID)
 }
 
 // TakeOne mocks base method.

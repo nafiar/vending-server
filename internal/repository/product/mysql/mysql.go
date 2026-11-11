@@ -52,6 +52,14 @@ func (s *MySQL) LockForUpdate(ctx context.Context, id int64) (model.Product, err
 	return p, err
 }
 
+func (s *MySQL) LockShared(ctx context.Context, id int64) (model.Product, error) {
+	p, err := scan(s.q.QueryRowContext(ctx, `SELECT `+columns+` FROM products WHERE id = ? LOCK IN SHARE MODE`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Product{}, model.ErrNoRecord
+	}
+	return p, err
+}
+
 func (s *MySQL) List(ctx context.Context, includeArchived bool) ([]model.Product, error) {
 	q := `SELECT ` + columns + ` FROM products`
 	if !includeArchived {

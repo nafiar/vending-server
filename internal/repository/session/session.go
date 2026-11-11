@@ -38,4 +38,14 @@ type Repository interface {
 	// DeleteByTokenHash ends the session with this token hash. A token that is
 	// not there is not an error: signing out twice is not a failure.
 	DeleteByTokenHash(ctx context.Context, tokenHash string) error
+
+	// DeleteByMachine ends every operator session on one machine, for when the
+	// machine is deactivated: whoever is signed in on its kiosk should not keep
+	// restocking a machine that is meant to be out of service.
+	DeleteByMachine(ctx context.Context, machineID int64) error
+
+	// DeleteByUser ends every session of one account, for when it is
+	// deactivated or its password is reset. Both mean the person holding the
+	// old token should stop being trusted at once, not whenever it goes idle.
+	DeleteByUser(ctx context.Context, userID int64) error
 }

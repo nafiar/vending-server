@@ -20,6 +20,7 @@ import (
 	"vending/internal/repository/machine"
 	"vending/internal/repository/product"
 	"vending/internal/repository/restock"
+	"vending/internal/repository/session"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/uow"
@@ -37,6 +38,7 @@ type Bundle struct {
 	UserRepo        user.Repository
 	RestockRepo     restock.Repository
 	ProductRepo     product.Repository
+	SessionRepo     session.Repository
 	AuditRepo       audit.Repository
 
 	// Attempts counts how often a unit of work has been opened, of either kind,
@@ -77,4 +79,5 @@ func (b *Bundle) Transactions() transaction.Repository { return b.TransactionRep
 func (b *Bundle) Users() user.Repository               { return b.UserRepo }
 func (b *Bundle) Restocks() restock.Repository         { return b.RestockRepo }
 func (b *Bundle) Products() product.Repository         { return b.ProductRepo }
+func (b *Bundle) Sessions() session.Repository         { return b.SessionRepo }
 func (b *Bundle) Audit() audit.Repository              { return b.AuditRepo }

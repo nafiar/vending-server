@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"strconv"
 
 	"vending/internal/core"
 	"vending/internal/model"
@@ -87,65 +86,6 @@ func (s *Server) restockSessions(w http.ResponseWriter, r *http.Request, p model
 		return nil, err
 	}
 	return s.svc.ListRestockSessions(r.Context(), in)
-}
-
-func (s *Server) machines(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	list, err := s.svc.ListMachines(r.Context())
-	if list == nil {
-		list = []core.MachineView{}
-	}
-	return list, err
-}
-
-func (s *Server) machine(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	return s.svc.GetMachine(r.Context(), id)
-}
-
-func (s *Server) createMachine(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	var in core.MachineInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
-		return nil, err
-	}
-	v, err := s.svc.CreateMachine(r.Context(), p, in)
-	return created{v}, err
-}
-
-func (s *Server) setMachineActive(active bool) adminFunc {
-	return func(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-		id, err := pathID(r, "id")
-		if err != nil {
-			return nil, err
-		}
-		return s.svc.SetMachineActive(r.Context(), p, id, active)
-	}
-}
-
-func (s *Server) rotateMachineKey(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	return s.svc.RotateMachineKey(r.Context(), p, id)
-}
-
-func (s *Server) updateSlot(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		return nil, err
-	}
-	n, err := strconv.Atoi(r.PathValue("n"))
-	if err != nil || n < 1 {
-		return nil, model.NotFound("Slot tidak ditemukan.")
-	}
-	var in core.SlotInput
-	if err := decode(w, r, &in, defaultBodyLimit); err != nil {
-		return nil, err
-	}
-	return s.svc.UpdateSlot(r.Context(), p, id, n, in)
 }
 
 func (s *Server) operators(w http.ResponseWriter, r *http.Request, p model.Principal) (any, error) {

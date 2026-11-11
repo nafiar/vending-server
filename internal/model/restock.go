@@ -55,3 +55,10 @@ type MachineSlots struct {
 	Machine Machine
 	Slots   []Slot
 }
+
+// Visit is one operator visit as the admin's operator list refers to it: when,
+// and to which machine.
+type Visit struct {
+	At          time.Time
+	MachineCode string
+}

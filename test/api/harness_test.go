@@ -209,14 +209,14 @@ func (e *env) asOperator(key, token, method, path string, body any) reply {
 
 func (e *env) createProduct(name string, price int) int64 {
 	e.t.Helper()
-	var p core.ProductView
+	var p productReply
 	e.mustOK(e.asAdmin("POST", "/api/admin/products", map[string]any{"name": name, "price": price}), &p)
 	return p.ID
 }
 
 func (e *env) createMachine(code string, slots, capacity int) (int64, string) {
 	e.t.Helper()
-	var r core.MachineWithKey
+	var r machineKeyReply
 	e.mustOK(e.asAdmin("POST", "/api/admin/machines", map[string]any{"code": code, "name": "Mesin " + code, "slotCount": slots, "capacity": capacity}), &r)
 	return r.Machine.ID, r.APIKey
 }
@@ -336,9 +336,9 @@ func (e *env) buy(key string, slot int) string {
 	return id
 }
 
-func (e *env) machineView(id int64) core.MachineView {
+func (e *env) machineView(id int64) machineReply {
 	e.t.Helper()
-	var m core.MachineView
+	var m machineReply
 	e.mustOK(e.asAdmin("GET", fmt.Sprintf("/api/admin/machines/%d", id), nil), &m)
 	return m
 }
@@ -439,4 +439,45 @@ type operatorSlotsReply struct {
 		Name string `json:"name"`
 	} `json:"machine"`
 	Slots []slotReply `json:"slots"`
+}
+
+// productReply, machineReply and machineKeyReply are what the admin web reads,
+// declared here rather than imported, for the reason catalogReply gives.
+type productReply struct {
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       int64   `json:"price"`
+	ImageURL    *string `json:"imageUrl"`
+	IsActive    bool    `json:"isActive"`
+	CreatedAt   int64   `json:"createdAt"`
+	UpdatedAt   int64   `json:"updatedAt"`
+	UsedIn      []struct {
+		MachineCode string `json:"machineCode"`
+		SlotNumber  int    `json:"slotNumber"`
+		Planned     bool   `json:"planned"`
+	} `json:"usedIn"`
+}
+
+type machineReply struct {
+	ID             int64       `json:"id"`
+	Code           string      `json:"code"`
+	Name           string      `json:"name"`
+	Location       string      `json:"location"`
+	IsActive       bool        `json:"isActive"`
+	CatalogVersion int64       `json:"catalogVersion"`
+	CreatedAt      int64       `json:"createdAt"`
+	LastSeenAt     *int64      `json:"lastSeenAt"`
+	LastSaleAt     *int64      `json:"lastSaleAt"`
+	SlotCount      int         `json:"slotCount"`
+	EmptySlots     int         `json:"emptySlots"`
+	BlockedSlots   int         `json:"blockedSlots"`
+	MonthRevenue   int64       `json:"monthRevenue"`
+	MonthSales     int64       `json:"monthSales"`
+	Slots          []slotReply `json:"slots"`
+}
+
+type machineKeyReply struct {
+	Machine machineReply `json:"machine"`
+	APIKey  string       `json:"apiKey"`
 }

@@ -332,7 +332,7 @@ func TestTC27_MachineKeys(t *testing.T) {
 	e.mustOK(e.asMachine(key2, "GET", "/api/machine/catalog", nil), nil)
 
 	// A rotated key replaces the old one at once.
-	var r core.MachineWithKey
+	var r machineKeyReply
 	e.mustOK(e.asAdmin("POST", fmt.Sprintf("/api/admin/machines/%d/rotate-key", id2), nil), &r)
 	e.expect(e.asMachine(key2, "GET", "/api/machine/catalog", nil), http.StatusUnauthorized, "INVALID_MACHINE_KEY")
 	e.mustOK(e.asMachine(r.APIKey, "GET", "/api/machine/catalog", nil), nil)

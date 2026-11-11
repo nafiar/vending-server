@@ -55,6 +55,31 @@ type Repository interface {
 	// a slot calls this first, keeping to the lock order above.
 	BumpCatalogVersion(ctx context.Context, id int64) error
 
+	// List returns every machine, by code, or just one when id is not 0. The
+	// order is what the admin's list is shown in.
+	List(ctx context.Context, id int64) ([]model.MachineRecord, error)
+
+	// ByCode returns the machine with this code, or an error wrapping
+	// model.ErrNoRecord. The code is matched as given; upper-casing it is the
+	// caller's rule.
+	ByCode(ctx context.Context, code string) (model.MachineRecord, error)
+
+	// Create registers a machine and returns its id. It reads Code, Name,
+	// Location and CreatedAt; a new machine is active at catalog version 1.
+	// keyHash is the hash of its machine key, which is all that is ever stored
+	// (FR-21, FR-23).
+	//
+	// It returns an error wrapping model.ErrDuplicateID when the code is taken.
+	Create(ctx context.Context, m model.MachineRecord, keyHash string) (int64, error)
+
+	// SetActive deactivates or reactivates a machine. A deactivated machine's
+	// key is refused, so its kiosk stops selling (BR-12, TC-27).
+	SetActive(ctx context.Context, id int64, active bool) error
+
+	// SetAPIKeyHash replaces a machine's key, for when the old one is lost or
+	// leaked: the old one stops working the moment this commits (FR-23).
+	SetAPIKeyHash(ctx context.Context, id int64, keyHash string) error
+
 	// BumpCatalogVersions does the same for several machines at once, for a
 	// change that affects all of them: an edited product is sold by every
 	// machine holding it, and they must all stop quoting the old price in one

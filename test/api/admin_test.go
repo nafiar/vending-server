@@ -74,13 +74,13 @@ func TestTC23_ProductValidation(t *testing.T) {
 			t.Errorf("%v: want an error on %s, got %v", c.body["name"], c.field, fields)
 		}
 	}
-	var list []core.ProductView
+	var list []productReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/products?includeArchived=1", nil), &list)
 	if len(list) != 0 {
 		t.Fatalf("nothing may be saved, got %d products", len(list))
 	}
 
-	var p core.ProductView
+	var p productReply
 	e.mustOK(e.asAdmin("POST", "/api/admin/products", map[string]any{"name": "  Gacha Rare ", "description": "5 kartu", "price": 25000, "imageUrl": pngDataURL(t, 30, 40)}), &p)
 	if p.Name != "Gacha Rare" || p.ImageURL == nil || !strings.HasSuffix(*p.ImageURL, ".png") {
 		t.Fatalf("created: %+v", p)
@@ -91,7 +91,7 @@ func TestTC23_ProductValidation(t *testing.T) {
 	}
 	res.Body.Close()
 	// Without an image a product gets a placeholder tile.
-	var q core.ProductView
+	var q productReply
 	e.mustOK(e.asAdmin("POST", "/api/admin/products", map[string]any{"name": "Gacha Common", "price": 10000}), &q)
 	if q.ImageURL == nil || !strings.HasSuffix(*q.ImageURL, ".svg") {
 		t.Fatalf("placeholder: %+v", q)
@@ -120,12 +120,12 @@ func TestTC24_TC25_Archive(t *testing.T) {
 	// Swap the coil to B at a visit; A now has history but no slot, so it can be archived.
 	e.createOperator("budi", "budi123")
 	e.restock(key, e.operatorLogin(key, "budi", "budi123"), map[int]int{1: 5})
-	var p core.ProductView
+	var p productReply
 	e.mustOK(e.asAdmin("POST", fmt.Sprintf("/api/admin/products/%d/archive", a), nil), &p)
 	if p.IsActive {
 		t.Fatal("archive")
 	}
-	var active []core.ProductView
+	var active []productReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/products", nil), &active)
 	if len(active) != 1 || active[0].ID != b {
 		t.Fatalf("an archived product is hidden from lists: %+v", active)
@@ -144,7 +144,7 @@ func TestTC24_TC25_Archive(t *testing.T) {
 // TC-26: registering a machine creates its slots and shows the key once.
 func TestTC26_RegisterMachine(t *testing.T) {
 	e := newEnv(t)
-	var r core.MachineWithKey
+	var r machineKeyReply
 	e.mustOK(e.asAdmin("POST", "/api/admin/machines", map[string]any{"code": "vm-02", "name": "Kantin", "location": "Lantai 1", "slotCount": 8, "capacity": 10}), &r)
 	if r.Machine.Code != "VM-02" || r.Machine.SlotCount != 8 || len(r.Machine.Slots) != 8 || !strings.HasPrefix(r.APIKey, "vmk_") {
 		t.Fatalf("created: %+v", r)
@@ -180,7 +180,7 @@ func TestTC28_MachineBoundaries(t *testing.T) {
 	for _, c := range []int{0, 31, 4} {
 		e.expect(e.asAdmin("PUT", fmt.Sprintf("/api/admin/machines/%d/slots/1", mid), map[string]any{"capacity": c, "nextProductId": nil}), http.StatusUnprocessableEntity, "VALIDATION")
 	}
-	var s core.SlotView
+	var s slotReply
 	e.mustOK(e.asAdmin("PUT", fmt.Sprintf("/api/admin/machines/%d/slots/1", mid), map[string]any{"capacity": 6, "nextProductId": nil}), &s)
 	if s.Capacity != 6 {
 		t.Fatalf("capacity equal to the count is allowed: %+v", s)
@@ -351,7 +351,7 @@ func TestDemoReset(t *testing.T) {
 	e.mustOK(e.asMachine(key, "GET", "/api/machine/catalog", nil), nil)                       // the key survived
 	e.mustOK(e.do("POST", "/api/admin/login", map[string]string{"username": "admin", "password": "admin123"}, nil), &login)
 	e.admin = login.Token
-	var list []core.ProductView
+	var list []productReply
 	e.mustOK(e.asAdmin("GET", "/api/admin/products?includeArchived=1", nil), &list)
 	for _, p := range list {
 		if p.Name == "Barang Uji" {

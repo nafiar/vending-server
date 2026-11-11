@@ -57,3 +57,13 @@ func (s *MySQL) ClearFailedLogins(ctx context.Context, id int64) error {
 	_, err := s.q.ExecContext(ctx, `UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`, id)
 	return err
 }
+
+func (s *MySQL) FirstActiveAdminID(ctx context.Context) (int64, error) {
+	var id int64
+	err := s.q.QueryRowContext(ctx,
+		`SELECT id FROM users WHERE role = ? AND is_active ORDER BY id LIMIT 1`, model.RoleAdmin).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, model.ErrNoRecord
+	}
+	return id, err
+}

@@ -348,11 +348,11 @@ func rotateKey(args []string) error {
 		return err
 	}
 	defer a.db.Close()
-	r, err := a.svc.RotateMachineKeyByCode(ctx, *code)
+	r, err := a.deps.Machine.RotateKeyByCode(ctx, *code)
 	if err != nil {
 		return describe(err)
 	}
-	fmt.Printf("New key for %s (the old key no longer works):\n%s\n", r.Machine.Code, r.APIKey)
+	fmt.Printf("New key for %s (the old key no longer works):\n%s\n", r.Machine.Machine.Code, r.APIKey)
 	return nil
 }
 

@@ -85,6 +85,36 @@ func (mr *MockRepositoryMockRecorder) ByAPIKeyHash(ctx, keyHash any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ByAPIKeyHash", reflect.TypeOf((*MockRepository)(nil).ByAPIKeyHash), ctx, keyHash)
 }
 
+// ByCode mocks base method.
+func (m *MockRepository) ByCode(ctx context.Context, code string) (model.MachineRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ByCode", ctx, code)
+	ret0, _ := ret[0].(model.MachineRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ByCode indicates an expected call of ByCode.
+func (mr *MockRepositoryMockRecorder) ByCode(ctx, code any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ByCode", reflect.TypeOf((*MockRepository)(nil).ByCode), ctx, code)
+}
+
+// Create mocks base method.
+func (m_2 *MockRepository) Create(ctx context.Context, m model.MachineRecord, keyHash string) (int64, error) {
+	m_2.ctrl.T.Helper()
+	ret := m_2.ctrl.Call(m_2, "Create", ctx, m, keyHash)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRepositoryMockRecorder) Create(ctx, m, keyHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, m, keyHash)
+}
+
 // Get mocks base method.
 func (m *MockRepository) Get(ctx context.Context, id int64) (model.MachineRecord, error) {
 	m.ctrl.T.Helper()
@@ -98,6 +128,21 @@ func (m *MockRepository) Get(ctx context.Context, id int64) (model.MachineRecord
 func (mr *MockRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, id)
+}
+
+// List mocks base method.
+func (m *MockRepository) List(ctx context.Context, id int64) ([]model.MachineRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, id)
+	ret0, _ := ret[0].([]model.MachineRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockRepositoryMockRecorder) List(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockRepository)(nil).List), ctx, id)
 }
 
 // LockForUpdate mocks base method.
@@ -128,6 +173,34 @@ func (m *MockRepository) LockShared(ctx context.Context, id int64) (model.Machin
 func (mr *MockRepositoryMockRecorder) LockShared(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockShared", reflect.TypeOf((*MockRepository)(nil).LockShared), ctx, id)
+}
+
+// SetAPIKeyHash mocks base method.
+func (m *MockRepository) SetAPIKeyHash(ctx context.Context, id int64, keyHash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetAPIKeyHash", ctx, id, keyHash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetAPIKeyHash indicates an expected call of SetAPIKeyHash.
+func (mr *MockRepositoryMockRecorder) SetAPIKeyHash(ctx, id, keyHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAPIKeyHash", reflect.TypeOf((*MockRepository)(nil).SetAPIKeyHash), ctx, id, keyHash)
+}
+
+// SetActive mocks base method.
+func (m *MockRepository) SetActive(ctx context.Context, id int64, active bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActive", ctx, id, active)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActive indicates an expected call of SetActive.
+func (mr *MockRepositoryMockRecorder) SetActive(ctx, id, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActive", reflect.TypeOf((*MockRepository)(nil).SetActive), ctx, id, active)
 }
 
 // TouchSeen mocks base method.

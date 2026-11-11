@@ -62,3 +62,13 @@ func (s *MySQL) DeleteByTokenHash(ctx context.Context, tokenHash string) error {
 	_, err := s.q.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, tokenHash)
 	return err
 }
+
+func (s *MySQL) DeleteByMachine(ctx context.Context, machineID int64) error {
+	_, err := s.q.ExecContext(ctx, `DELETE FROM sessions WHERE machine_id = ?`, machineID)
+	return err
+}
+
+func (s *MySQL) DeleteByUser(ctx context.Context, userID int64) error {
+	_, err := s.q.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+	return err
+}

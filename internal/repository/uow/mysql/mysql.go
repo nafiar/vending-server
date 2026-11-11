@@ -10,6 +10,7 @@ import (
 	"vending/internal/repository/mysqldb"
 	productmysql "vending/internal/repository/product/mysql"
 	restockmysql "vending/internal/repository/restock/mysql"
+	sessionmysql "vending/internal/repository/session/mysql"
 	slotmysql "vending/internal/repository/slot/mysql"
 	transactionmysql "vending/internal/repository/transaction/mysql"
 	"vending/internal/repository/uow"
@@ -19,6 +20,7 @@ import (
 	"vending/internal/repository/machine"
 	"vending/internal/repository/product"
 	"vending/internal/repository/restock"
+	"vending/internal/repository/session"
 	"vending/internal/repository/slot"
 	"vending/internal/repository/transaction"
 	"vending/internal/repository/user"
@@ -54,4 +56,5 @@ func (b bundle) Transactions() transaction.Repository { return transactionmysql.
 func (b bundle) Users() user.Repository               { return usermysql.New(b.q) }
 func (b bundle) Restocks() restock.Repository         { return restockmysql.New(b.q) }
 func (b bundle) Products() product.Repository         { return productmysql.New(b.q) }
+func (b bundle) Sessions() session.Repository         { return sessionmysql.New(b.q) }
 func (b bundle) Audit() audit.Repository              { return auditmysql.New(b.q) }
