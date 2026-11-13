@@ -1,0 +1,20 @@
+$kind: http-request
+description: "TC-06: count unchanged, slot blocked until the next restock visit (folder 9 clears it)."
+url: "{{baseUrl}}/api/machine/transactions/{{txId}}/result"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "FAILED",
+      "failureReason": "MOTOR_TIMEOUT"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      pm.test('FAILED', () => pm.expect(pm.response.json().status).to.eql('FAILED'));
+    language: text/javascript
+order: 14000

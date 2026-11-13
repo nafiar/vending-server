@@ -28,12 +28,14 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"vending/internal/config"
-	"vending/internal/core"
-	"vending/internal/database"
-	"vending/internal/httpapi"
-	"vending/internal/security"
-	"vending/internal/seed"
+	"vending/internal/app"
+	"vending/internal/common/config"
+	"vending/internal/common/logx"
+	"vending/internal/common/security"
+	deliveryhttp "vending/internal/delivery/http"
+	"vending/internal/delivery/scheduler"
+	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
 	"vending/web"
 )
 
@@ -96,27 +98,29 @@ func run(args []string) error {
 	}
 }
 
-type app struct {
-	cfg config.Config
-	log *slog.Logger
-	db  *sql.DB
-	svc *core.Service
+// instance is one opened server: the settings, the logger, the pool and the
+// dependency graph built over them.
+type instance struct {
+	cfg  config.Config
+	log  *slog.Logger
+	db   *sql.DB
+	deps app.Deps
 }
 
 // open loads the settings, connects to MySQL and, unless AUTO_MIGRATE=false,
 // creates the database and applies pending migrations first.
-func open(ctx context.Context, forceMigrate bool) (*app, error) {
+func open(ctx context.Context, forceMigrate bool) (*instance, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
 	}
-	log := newLogger(cfg)
+	log := logx.New(cfg.LogFormat, cfg.LogLevel)
 	var ensureErr error
 	if cfg.AutoMigrate || forceMigrate {
 		// Needs the CREATE privilege; a database created beforehand by a DBA works too.
-		ensureErr = database.EnsureDatabase(ctx, cfg.DB)
+		ensureErr = mysqldb.EnsureDatabase(ctx, cfg.DB)
 	}
-	db, err := database.Open(ctx, cfg.DB)
+	db, err := mysqldb.Open(ctx, cfg.DB)
 	if err != nil {
 		if ensureErr != nil {
 			return nil, ensureErr
@@ -124,37 +128,12 @@ func open(ctx context.Context, forceMigrate bool) (*app, error) {
 		return nil, err
 	}
 	if cfg.AutoMigrate || forceMigrate {
-		if _, err := database.Migrate(ctx, db, log); err != nil {
+		if _, err := mysqldb.Migrate(ctx, db, log); err != nil {
 			db.Close()
 			return nil, err
 		}
 	}
-	svc := core.New(db, core.Options{
-		Location:      cfg.Location,
-		UploadDir:     cfg.UploadDir,
-		AdminIdle:     cfg.AdminIdle,
-		OperatorIdle:  cfg.OperatorIdle,
-		PaymentWindow: cfg.PaymentWindow,
-		Logger:        log,
-	})
-	return &app{cfg: cfg, log: log, db: db, svc: svc}, nil
-}
-
-func newLogger(cfg config.Config) *slog.Logger {
-	level := slog.LevelInfo
-	switch cfg.LogLevel {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	}
-	opts := &slog.HandlerOptions{Level: level}
-	if cfg.LogFormat == "json" {
-		return slog.New(slog.NewJSONHandler(os.Stderr, opts))
-	}
-	return slog.New(slog.NewTextHandler(os.Stderr, opts))
+	return &instance{cfg: cfg, log: log, db: db, deps: app.Wire(db, cfg, log, nil)}, nil
 }
 
 // ---------------------------------------------------------------- serve
@@ -184,22 +163,24 @@ func serve(args []string) error {
 		a.log.Warn("no admin account yet: run `vending-server create-admin` (or `seed-demo` for demo data)")
 	}
 
-	if n, err := a.svc.ExpirePending(ctx); err == nil && n > 0 {
-		a.log.Info("expired abandoned payments left from the last run", "count", n)
-	}
-	go a.svc.RunJobs(ctx)
+	// The sweeps that keep the data honest, on their own timers. Catchup runs
+	// the expiry once before the first request, because a server that was
+	// stopped overnight comes back holding items for payments nobody will make.
+	jobs := scheduler.New(a.deps.Maintenance, a.log)
+	jobs.Catchup(ctx)
+	go jobs.Run(ctx)
 
-	var opts httpapi.Options
+	opts := deliveryhttp.Options{UploadDir: a.cfg.UploadDir}
 	if a.cfg.DemoMode {
 		opts.DemoReset = func(ctx context.Context) error {
-			_, err := seed.Demo(ctx, a.svc, true)
+			_, err := a.deps.Demo.Load(ctx, true)
 			return err
 		}
 		a.log.Warn("DEMO_MODE is on: any admin can reset all data from the admin web")
 	}
 	srv := &http.Server{
 		Addr:              a.cfg.HTTPAddr,
-		Handler:           httpapi.New(a.svc, web.Admin(), a.log, opts),
+		Handler:           deliveryhttp.New(a.deps.UseCases(), web.Admin(), a.log, opts),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -244,9 +225,9 @@ func migrateCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	log := newLogger(cfg)
-	ensureErr := database.EnsureDatabase(ctx, cfg.DB)
-	db, err := database.Open(ctx, cfg.DB)
+	log := logx.New(cfg.LogFormat, cfg.LogLevel)
+	ensureErr := mysqldb.EnsureDatabase(ctx, cfg.DB)
+	db, err := mysqldb.Open(ctx, cfg.DB)
 	if err != nil {
 		if ensureErr != nil {
 			return ensureErr
@@ -254,11 +235,11 @@ func migrateCmd(args []string) error {
 		return err
 	}
 	defer db.Close()
-	applied, err := database.Migrate(ctx, db, log)
+	applied, err := mysqldb.Migrate(ctx, db, log)
 	if err != nil {
 		return err
 	}
-	name, _ := cfg.DB.DatabaseName()
+	name, _ := mysqldb.DatabaseName(cfg.DB)
 	if len(applied) == 0 {
 		fmt.Printf("Database %q is up to date.\n", name)
 	} else {
@@ -287,14 +268,14 @@ func createAdmin(args []string) error {
 		pw = security.TemporaryPassword(14)
 	}
 	if *reset {
-		if err := a.svc.SetPassword(ctx, *username, pw); err == nil {
+		if err := a.deps.OperatorConsole.SetPassword(ctx, *username, pw); err == nil {
 			printPassword("Password reset for", *username, pw, generated)
 			return nil
-		} else if e, ok := core.AsError(err); !ok || e.Code != "NOT_FOUND" {
+		} else if e, ok := model.AsError(err); !ok || e.Code != model.CodeNotFound {
 			return describe(err)
 		}
 	}
-	if _, err := a.svc.CreateAdmin(ctx, *name, *username, pw); err != nil {
+	if _, err := a.deps.OperatorConsole.CreateAdmin(ctx, *name, *username, pw); err != nil {
 		return describe(err)
 	}
 	printPassword("Admin account created:", *username, pw, generated)
@@ -322,7 +303,7 @@ func seedDemo(args []string) error {
 	if err := os.MkdirAll(a.cfg.UploadDir, 0o755); err != nil {
 		return err
 	}
-	res, err := seed.Demo(ctx, a.svc, *reset)
+	res, err := a.deps.Demo.Load(ctx, *reset)
 	if err != nil {
 		return err
 	}
@@ -359,11 +340,11 @@ func rotateKey(args []string) error {
 		return err
 	}
 	defer a.db.Close()
-	r, err := a.svc.RotateMachineKeyByCode(ctx, *code)
+	r, err := a.deps.Machine.RotateKeyByCode(ctx, *code)
 	if err != nil {
 		return describe(err)
 	}
-	fmt.Printf("New key for %s (the old key no longer works):\n%s\n", r.Machine.Code, r.APIKey)
+	fmt.Printf("New key for %s (the old key no longer works):\n%s\n", r.Machine.Machine.Code, r.APIKey)
 	return nil
 }
 
@@ -374,17 +355,16 @@ func reconcile(args []string) error {
 		return err
 	}
 	defer a.db.Close()
-	rows, err := a.svc.Reconcile(ctx)
+	check, err := a.deps.Maintenance.Reconcile(ctx)
 	if err != nil {
 		return err
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "MACHINE\tSLOT\tAT LAST VISIT\tSOLD SINCE\tEXPECTED\tACTUAL\tOK")
-	bad := 0
-	for _, r := range rows {
+	for _, r := range check.Slots {
 		ok := "yes"
 		if !r.Matches {
-			ok, bad = "NO", bad+1
+			ok = "NO"
 		}
 		visit := fmt.Sprint(r.CountAtVisit)
 		if r.NeverRestocked {
@@ -393,16 +373,16 @@ func reconcile(args []string) error {
 		fmt.Fprintf(tw, "%s\t%d\t%s\t%d\t%d\t%d\t%s\n", r.MachineCode, r.SlotNumber, visit, r.SoldSince, r.Expected, r.Actual, ok)
 	}
 	tw.Flush()
-	if bad > 0 {
-		return fmt.Errorf("%d slot(s) don't match their history", bad)
+	if check.Mismatches > 0 {
+		return fmt.Errorf("%d slot(s) don't match their history", check.Mismatches)
 	}
-	fmt.Printf("All %d slots match their visits and sales.\n", len(rows))
+	fmt.Printf("All %d slots match their visits and sales.\n", len(check.Slots))
 	return nil
 }
 
 // describe turns a validation error into a readable line for the terminal.
 func describe(err error) error {
-	e, ok := core.AsError(err)
+	e, ok := model.AsError(err)
 	if !ok {
 		return err
 	}

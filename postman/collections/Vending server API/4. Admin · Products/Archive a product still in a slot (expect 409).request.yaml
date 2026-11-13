@@ -1,0 +1,14 @@
+$kind: http-request
+description: "TC-24: refused with the slots that hold or plan it (BR-10). Skipped when no product is in a slot."
+url: "{{baseUrl}}/api/admin/products/{{inUseProductId}}/archive"
+method: POST
+scripts:
+  - type: beforeRequest
+    code: if (!pm.collectionVariables.get('inUseProductId')) { pm.execution.skipRequest(); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('status 409', () => pm.response.to.have.status(409));
+      pm.test('error code CONFLICT', () => pm.expect(pm.response.json().code).to.eql('CONFLICT'));
+    language: text/javascript
+order: 7000

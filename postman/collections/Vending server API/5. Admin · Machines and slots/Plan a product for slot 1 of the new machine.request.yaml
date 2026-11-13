@@ -1,0 +1,18 @@
+$kind: http-request
+description: Capacity 1–30 and not below the count; the planned product applies at the next restock visit (BR-08). Send nextProductId null to clear the plan.
+url: "{{baseUrl}}/api/admin/machines/{{machineId}}/slots/1"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "capacity": 10,
+      "nextProductId": {{productId}}
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 5000

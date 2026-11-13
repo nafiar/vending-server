@@ -1,0 +1,21 @@
+$kind: http-request
+description: "TC-23: empty name and price 0 are refused; fields lists each problem."
+url: "{{baseUrl}}/api/admin/products"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "",
+      "description": "",
+      "price": 0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 422', () => pm.response.to.have.status(422));
+      pm.test('error code VALIDATION', () => pm.expect(pm.response.json().code).to.eql('VALIDATION'));
+    language: text/javascript
+order: 3000

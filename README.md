@@ -158,14 +158,25 @@ A wrong machine key gives `INVALID_MACHINE_KEY` 401; a deactivated machine gives
 - **Logins** lock for 5 minutes after 5 wrong passwords, even against the right one (FR-13). Admin sessions end after 30 minutes idle, operator sessions after 2 (BR-13). Unknown usernames take as long as known ones.
 - **Times** are stored in UTC; "today", days, weeks (Monday start) and months are computed in WIB.
 - **Images** are checked by content, not name: JPG or PNG, at most 2 MB and 6000 × 6000 px, saved under a random name. A product without an image gets a placeholder tile. Uploads are served with a sandboxing CSP header.
-- **Abandoned payments** expire every minute (BR-06), and at start-up.
+- **Abandoned payments** expire every minute (BR-06), and at start-up, swept by `delivery/scheduler` over `usecase/maintenance`.
+- **The layering is enforced by a test.** `internal/architecture_test.go` reads the imports of every file under `internal/` and fails the build if one points outward: a usecase importing `net/http`, `database/sql` or a concrete driver, delivery reaching for a repository, or `model` importing anything internal at all. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Tests
 
 ```bash
 go test ./...                                                        # unit tests, no database
 VENDING_TEST_DSN='root:secret@tcp(127.0.0.1:3306)/' go test -race ./... # plus the MySQL integration tests
+make generate                                                        # regenerate the port mocks
 ```
+
+**Without `VENDING_TEST_DSN` all thirty integration tests skip**, which looks
+exactly like passing. Set it before judging a change green.
+
+There are tests at each layer, and each catches a different kind of mistake:
+the pure rules in `model` and `common` with table tests; every usecase against
+mock repositories, which is where the lock order is asserted; the handlers
+against mock usecases over `httptest`, for status codes, access rules and JSON
+field names; and the whole system in `test/api`.
 
 The integration tests run the real HTTP handlers against MySQL. Each test creates its own database, runs on a fake clock and drops the database afterwards. They map to the PRD's test cases:
 
@@ -201,17 +212,41 @@ TC-02, TC-07 and TC-32 are screen behaviour, and TC-34 to TC-36 need the motor b
 
 ## Project layout
 
+The code is clean architecture: imports point inward only, and a test enforces
+it. The rulebook is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); read that
+before adding a story.
+
 ```
-cmd/vending-server/      main: serve and the command-line tools
-internal/config/         settings from the environment and .env
-internal/database/       connection, embedded migrations (migrations/0001_init.sql)
-internal/core/           the use cases and business rules, one file per area
-internal/httpapi/        routes, middleware, JSON errors, and the integration tests
-internal/security/       Argon2id passwords, tokens, UUIDs
-internal/seed/           demo data, simulated event by event so it reconciles
+cmd/vending-server/      main: serve, and the command-line tools
+internal/
+├── model/               domain types, the business error, pure rules. Imports nothing internal.
+├── common/              config, logging, Argon2id/tokens, the clock, calendar, paging, image decoding
+├── repository/          one port per table or external thing, with its driver in a subpackage:
+│                          machine/ slot/ product/ transaction/ restock/ user/ session/
+│                          audit/ report/ uow/ imagestore/ health/ seeddata/
+│                          mysqldb/ — the pool, embedded migrations, the tx runner with its retry
+├── usecase/             the rules, one package per story:
+│                          auth/ catalog/ purchase/ restock/ product/ machine/
+│                          operator/ recap/ audit/ maintenance/ demo/
+├── delivery/            inbound adapters:
+│                          http/      — routes, middleware, access wrappers, JSON errors, dto_* wire shapes
+│                          scheduler/ — the ticker that drives the maintenance sweeps
+└── app/                 the composition root: where the concrete drivers are chosen
 web/admin/               the admin web, embedded into the binary
+test/api/                black-box end-to-end tests over real MySQL
 deploy/                  deploy.sh (run on your laptop) and setup-vm.sh (run on the VM); see DEPLOY.md
+docs/                    ARCHITECTURE.md (the rulebook), REARCHITECTURE.md (how it got this shape)
 ```
+
+Where to look for a given change:
+
+| You want to change | Go to |
+| --- | --- |
+| a business rule or a validation message | `internal/usecase/<story>/` |
+| a SQL query | `internal/repository/<thing>/mysql/` |
+| a JSON field name or an HTTP status | `internal/delivery/http/dto_*.go`, `status.go` |
+| a route or who may call it | `internal/delivery/http/router.go` |
+| what is constructed with what | `internal/app/app.go` |
 
 ## Differences from the PRD data dictionary
 

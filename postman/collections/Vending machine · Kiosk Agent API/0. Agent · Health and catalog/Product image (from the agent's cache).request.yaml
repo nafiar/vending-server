@@ -1,0 +1,12 @@
+$kind: http-request
+description: imageUrl is relative (/uploads/...); the agent serves its disk copy or fetches it from the server.
+url: "{{agentUrl}}/{{imageUrl}}"
+method: GET
+scripts:
+  - type: beforeRequest
+    code: if (!pm.collectionVariables.get('imageUrl')) { pm.execution.skipRequest(); }
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4000

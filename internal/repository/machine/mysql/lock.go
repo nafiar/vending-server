@@ -1,0 +1,44 @@
+package mysql
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"vending/internal/model"
+	"vending/internal/repository/mysqldb"
+)
+
+func (s *MySQL) LockShared(ctx context.Context, id int64) (model.MachineRecord, error) {
+	// LOCK IN SHARE MODE rather than FOR UPDATE: a purchase only reads the
+	// machine, and two purchases on different slots of one machine must not
+	// queue behind each other on this row.
+	m, err := scan(s.q.QueryRowContext(ctx, `SELECT `+columns+` FROM machines WHERE id = ? LOCK IN SHARE MODE`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.MachineRecord{}, model.ErrNoRecord
+	}
+	return m, err
+}
+
+func (s *MySQL) LockForUpdate(ctx context.Context, id int64) (model.MachineRecord, error) {
+	m, err := scan(s.q.QueryRowContext(ctx, `SELECT `+columns+` FROM machines WHERE id = ? FOR UPDATE`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.MachineRecord{}, model.ErrNoRecord
+	}
+	return m, err
+}
+
+func (s *MySQL) BumpCatalogVersion(ctx context.Context, id int64) error {
+	_, err := s.q.ExecContext(ctx, `UPDATE machines SET catalog_version = catalog_version + 1 WHERE id = ?`, id)
+	return err
+}
+
+func (s *MySQL) BumpCatalogVersions(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := s.q.ExecContext(ctx,
+		`UPDATE machines SET catalog_version = catalog_version + 1 WHERE id IN (`+
+			mysqldb.Placeholders(len(ids))+`)`, mysqldb.Args(ids)...)
+	return err
+}

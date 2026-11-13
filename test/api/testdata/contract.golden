@@ -1,0 +1,603 @@
+# The API contract, as field-path shapes. Written by TestAPIContract.
+# Regenerate after an intended change: go test ./test/api -run TestAPIContract -update
+
+GET /api/health -> 200
+  database: string
+  ok: bool
+  serverTime: number
+
+POST /api/admin/login -> 200
+  name: string
+  token: string
+  username: string
+
+GET /api/admin/me -> 200
+  demoMode: bool
+  name: string
+  role: string
+  username: string
+
+GET /api/admin/recap/summary -> 200
+  last7.revenue: number
+  last7.sales: number
+  month.revenue: number
+  month.sales: number
+  sameTimeYesterday.revenue: number
+  sameTimeYesterday.sales: number
+  today.revenue: number
+  today.sales: number
+
+GET /api/admin/recap -> 200
+  breakdown[].key: string
+  breakdown[].label: string
+  breakdown[].revenue: number
+  breakdown[].sales: number
+  byMachine[].code: string
+  byMachine[].isActive: bool
+  byMachine[].lastSaleAt: number
+  byMachine[].lastSeenAt: number
+  byMachine[].location: string
+  byMachine[].machineId: number
+  byMachine[].name: string
+  byMachine[].revenue: number
+  byMachine[].sales: number
+  from: string
+  groupBy: string
+  series[].period: string
+  series[].revenue: number
+  series[].sales: number
+  series[].start: number
+  to: string
+  topProducts[].key: string
+  topProducts[].label: string
+  topProducts[].revenue: number
+  topProducts[].sales: number
+  totals.cancelled: number
+  totals.failed: number
+  totals.reported: number
+  totals.revenue: number
+  totals.sales: number
+
+GET /api/admin/transactions -> 200
+  dispensedCount: number
+  dispensedRevenue: number
+  page: number
+  pageSize: number
+  rows[].createdAt: number
+  rows[].customerReportedAt: null
+  rows[].failureReason: null|string
+  rows[].finishedAt: number
+  rows[].id: string
+  rows[].machine.code: string
+  rows[].machine.id: number
+  rows[].machine.name: string
+  rows[].paidAt: number
+  rows[].price: number
+  rows[].product.id: number
+  rows[].product.name: string
+  rows[].slotNumber: number
+  rows[].status: string
+  total: number
+
+GET /api/admin/restock-sessions -> 200
+  page: number
+  pageSize: number
+  rows[].clientId: string
+  rows[].finishedAt: number
+  rows[].id: number
+  rows[].itemsAdded: number
+  rows[].items[].productChanged: bool
+  rows[].items[].productId: number
+  rows[].items[].productName: string
+  rows[].items[].qtyAfter: number
+  rows[].items[].qtyBefore: number
+  rows[].items[].slotNumber: number
+  rows[].machine.code: string
+  rows[].machine.id: number
+  rows[].machine.name: string
+  rows[].note: null
+  rows[].operator.id: number
+  rows[].operator.name: string
+  rows[].operator.username: string
+  rows[].slotsChanged: number
+  rows[].startedAt: number
+  total: number
+
+GET /api/admin/products -> 200
+  [].createdAt: number
+  [].description: string
+  [].id: number
+  [].imageUrl: string
+  [].isActive: bool
+  [].name: string
+  [].price: number
+  [].updatedAt: number
+  [].usedIn: empty-array
+  [].usedIn[].machineCode: string
+  [].usedIn[].planned: bool
+  [].usedIn[].slotNumber: number
+
+GET /api/admin/machines -> 200
+  [].blockedSlots: number
+  [].catalogVersion: number
+  [].code: string
+  [].createdAt: number
+  [].emptySlots: number
+  [].id: number
+  [].isActive: bool
+  [].lastSaleAt: number
+  [].lastSeenAt: number
+  [].location: string
+  [].monthRevenue: number
+  [].monthSales: number
+  [].name: string
+  [].slotCount: number
+
+GET /api/admin/operators -> 200
+  [].createdAt: number
+  [].id: number
+  [].isActive: bool
+  [].lastVisitAt: null|number
+  [].lastVisitMachine: null|string
+  [].name: string
+  [].role: string
+  [].username: string
+  [].visits30: number
+
+GET /api/admin/audit-logs -> 200
+  [].action: string
+  [].after: opaque
+  [].before: null|opaque
+  [].createdAt: number
+  [].entityId: number
+  [].entityLabel: string
+  [].entityType: string
+  [].id: number
+  [].user.id: number
+  [].user.name: string
+
+GET /api/admin/reconcile -> 200
+  mismatches: number
+  slots[].actual: number
+  slots[].countAtVisit: number
+  slots[].expected: number
+  slots[].lastVisitAt: number
+  slots[].lastVisitId: number
+  slots[].machineCode: string
+  slots[].matches: bool
+  slots[].neverRestocked: bool
+  slots[].slotNumber: number
+  slots[].soldSince: number
+
+GET /api/admin/machines/{id} -> 200
+  blockedSlots: number
+  catalogVersion: number
+  code: string
+  createdAt: number
+  emptySlots: number
+  id: number
+  isActive: bool
+  lastSaleAt: number
+  lastSeenAt: number
+  location: string
+  monthRevenue: number
+  monthSales: number
+  name: string
+  slotCount: number
+  slots[].capacity: number
+  slots[].needsCheck: bool
+  slots[].nextProduct: null
+  slots[].nextProduct.description: string
+  slots[].nextProduct.id: number
+  slots[].nextProduct.imageUrl: string
+  slots[].nextProduct.name: string
+  slots[].nextProduct.price: number
+  slots[].product.description: string
+  slots[].product.id: number
+  slots[].product.imageUrl: string
+  slots[].product.name: string
+  slots[].product.price: number
+  slots[].qty: number
+  slots[].slotNumber: number
+
+POST /api/admin/products -> 201
+  createdAt: number
+  description: string
+  id: number
+  imageUrl: string
+  isActive: bool
+  name: string
+  price: number
+  updatedAt: number
+  usedIn: empty-array
+
+PUT /api/admin/products/{id} -> 200
+  createdAt: number
+  description: string
+  id: number
+  imageUrl: string
+  isActive: bool
+  name: string
+  price: number
+  updatedAt: number
+  usedIn: empty-array
+
+POST /api/admin/products/{id}/archive -> 200
+  createdAt: number
+  description: string
+  id: number
+  imageUrl: string
+  isActive: bool
+  name: string
+  price: number
+  updatedAt: number
+  usedIn: empty-array
+
+POST /api/admin/products/{id}/restore -> 200
+  createdAt: number
+  description: string
+  id: number
+  imageUrl: string
+  isActive: bool
+  name: string
+  price: number
+  updatedAt: number
+  usedIn: empty-array
+
+POST /api/admin/machines -> 201
+  apiKey: string
+  machine.blockedSlots: number
+  machine.catalogVersion: number
+  machine.code: string
+  machine.createdAt: number
+  machine.emptySlots: number
+  machine.id: number
+  machine.isActive: bool
+  machine.lastSaleAt: null
+  machine.lastSeenAt: null
+  machine.location: string
+  machine.monthRevenue: number
+  machine.monthSales: number
+  machine.name: string
+  machine.slotCount: number
+  machine.slots[].capacity: number
+  machine.slots[].needsCheck: bool
+  machine.slots[].nextProduct: null
+  machine.slots[].product: null
+  machine.slots[].qty: number
+  machine.slots[].slotNumber: number
+
+PUT /api/admin/machines/{id}/slots/{n} -> 200
+  capacity: number
+  needsCheck: bool
+  nextProduct.description: string
+  nextProduct.id: number
+  nextProduct.imageUrl: string
+  nextProduct.name: string
+  nextProduct.price: number
+  product: null
+  qty: number
+  slotNumber: number
+
+POST /api/admin/machines/{id}/deactivate -> 200
+  blockedSlots: number
+  catalogVersion: number
+  code: string
+  createdAt: number
+  emptySlots: number
+  id: number
+  isActive: bool
+  lastSaleAt: null
+  lastSeenAt: null
+  location: string
+  monthRevenue: number
+  monthSales: number
+  name: string
+  slotCount: number
+  slots[].capacity: number
+  slots[].needsCheck: bool
+  slots[].nextProduct: null
+  slots[].nextProduct.description: string
+  slots[].nextProduct.id: number
+  slots[].nextProduct.imageUrl: string
+  slots[].nextProduct.name: string
+  slots[].nextProduct.price: number
+  slots[].product: null
+  slots[].qty: number
+  slots[].slotNumber: number
+
+GET /api/machine/catalog (inactive machine) -> 403 MACHINE_INACTIVE
+  code: string
+  message: string
+
+POST /api/admin/machines/{id}/activate -> 200
+  blockedSlots: number
+  catalogVersion: number
+  code: string
+  createdAt: number
+  emptySlots: number
+  id: number
+  isActive: bool
+  lastSaleAt: null
+  lastSeenAt: null
+  location: string
+  monthRevenue: number
+  monthSales: number
+  name: string
+  slotCount: number
+  slots[].capacity: number
+  slots[].needsCheck: bool
+  slots[].nextProduct: null
+  slots[].nextProduct.description: string
+  slots[].nextProduct.id: number
+  slots[].nextProduct.imageUrl: string
+  slots[].nextProduct.name: string
+  slots[].nextProduct.price: number
+  slots[].product: null
+  slots[].qty: number
+  slots[].slotNumber: number
+
+POST /api/admin/machines/{id}/rotate-key -> 200
+  apiKey: string
+  machine.blockedSlots: number
+  machine.catalogVersion: number
+  machine.code: string
+  machine.createdAt: number
+  machine.emptySlots: number
+  machine.id: number
+  machine.isActive: bool
+  machine.lastSaleAt: null
+  machine.lastSeenAt: null
+  machine.location: string
+  machine.monthRevenue: number
+  machine.monthSales: number
+  machine.name: string
+  machine.slotCount: number
+  machine.slots[].capacity: number
+  machine.slots[].needsCheck: bool
+  machine.slots[].nextProduct: null
+  machine.slots[].nextProduct.description: string
+  machine.slots[].nextProduct.id: number
+  machine.slots[].nextProduct.imageUrl: string
+  machine.slots[].nextProduct.name: string
+  machine.slots[].nextProduct.price: number
+  machine.slots[].product: null
+  machine.slots[].qty: number
+  machine.slots[].slotNumber: number
+
+POST /api/admin/operators -> 201
+  id: number
+
+POST /api/admin/operators/{id}/deactivate -> 200
+  ok: bool
+
+POST /api/admin/operators/{id}/activate -> 200
+  ok: bool
+
+POST /api/admin/operators/{id}/reset-password -> 200
+  temporaryPassword: string
+
+GET /api/machine/catalog -> 200
+  catalogVersion: number
+  machine.code: string
+  machine.name: string
+  slots[].available: bool
+  slots[].product.description: string
+  slots[].product.id: number
+  slots[].product.imageUrl: string
+  slots[].product.name: string
+  slots[].product.price: number
+  slots[].slotNumber: number
+
+POST /api/machine/heartbeat -> 200
+  catalogVersion: number
+  ok: bool
+  serverTime: number
+
+POST /api/machine/operator/login -> 200
+  name: string
+  token: string
+  username: string
+
+GET /api/machine/operator/slots -> 200
+  machine.code: string
+  machine.name: string
+  slots[].capacity: number
+  slots[].needsCheck: bool
+  slots[].nextProduct: null
+  slots[].nextProduct.description: string
+  slots[].nextProduct.id: number
+  slots[].nextProduct.imageUrl: string
+  slots[].nextProduct.name: string
+  slots[].nextProduct.price: number
+  slots[].product.description: string
+  slots[].product.id: number
+  slots[].product.imageUrl: string
+  slots[].product.name: string
+  slots[].product.price: number
+  slots[].qty: number
+  slots[].slotNumber: number
+
+POST /api/machine/restock-sessions -> 200
+  catalogVersion: number
+  id: string
+  savedAt: number
+  sessionId: number
+
+POST /api/machine/operator/logout -> 200
+  ok: bool
+
+POST /api/machine/transactions -> 200
+  amount: number
+  createdAt: number
+  expiresInSeconds: number
+  id: string
+  product.description: string
+  product.id: number
+  product.imageUrl: string
+  product.name: string
+  product.price: number
+  slotNumber: number
+  status: string
+
+GET /api/machine/transactions/{id} -> 200
+  customerReportedAt: null
+  failureReason: null
+  finishedAt: null
+  id: string
+  paidAt: null
+  status: string
+
+POST /api/machine/transactions/{id}/pay -> 200
+  customerReportedAt: null
+  failureReason: null
+  finishedAt: null
+  id: string
+  paidAt: number
+  status: string
+
+POST /api/machine/transactions/{id}/result -> 200
+  customerReportedAt: null
+  failureReason: null
+  finishedAt: number
+  id: string
+  paidAt: number
+  status: string
+
+POST /api/machine/transactions/{id}/report -> 200
+  id: string
+  reported: bool
+  reportedAt: number
+
+POST /api/machine/transactions/{id}/cancel -> 200
+  customerReportedAt: null
+  failureReason: null
+  finishedAt: number
+  id: string
+  paidAt: null
+  status: string
+
+GET /api/nope -> 404 NOT_FOUND
+  code: string
+  message: string
+
+DELETE /api/admin/products -> 404 NOT_FOUND
+  code: string
+  message: string
+
+GET /api/admin/me (no token) -> 401 UNAUTHORIZED
+  code: string
+  message: string
+
+POST /api/admin/login (wrong password) -> 401 INVALID_LOGIN
+  attemptsLeft: number
+  code: string
+  message: string
+
+POST /api/admin/login (operator account) -> 403 FORBIDDEN
+  code: string
+  message: string
+
+GET /api/machine/catalog (bad key) -> 401 INVALID_MACHINE_KEY
+  code: string
+  message: string
+
+GET /api/machine/operator/slots (no operator token) -> 401 UNAUTHORIZED
+  code: string
+  message: string
+
+POST /api/admin/products (empty) -> 422 VALIDATION
+  code: string
+  fields.name: string
+  fields.price: string
+  message: string
+
+POST /api/admin/products (bad json) -> 400 BAD_REQUEST
+  code: string
+  message: string
+
+GET /api/admin/machines/{id} (unknown) -> 404 NOT_FOUND
+  code: string
+  message: string
+
+PUT /api/admin/products/{id} (unknown) -> 404 NOT_FOUND
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/pay (unknown) -> 404 NOT_FOUND
+  code: string
+  message: string
+
+POST /api/machine/transactions (bad uuid) -> 422 INVALID_INPUT
+  code: string
+  fields.id: string
+  message: string
+
+POST /api/machine/transactions (stale catalog) -> 409 CATALOG_STALE
+  catalog.catalogVersion: number
+  catalog.machine.code: string
+  catalog.machine.name: string
+  catalog.slots[].available: bool
+  catalog.slots[].product.description: string
+  catalog.slots[].product.id: number
+  catalog.slots[].product.imageUrl: string
+  catalog.slots[].product.name: string
+  catalog.slots[].product.price: number
+  catalog.slots[].slotNumber: number
+  code: string
+  message: string
+
+POST /api/machine/transactions (sold out) -> 409 SOLD_OUT
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/result (not paid) -> 409 NOT_PAID
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/report (not reportable) -> 409 NOT_REPORTABLE
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/result (bad status) -> 422 INVALID_INPUT
+  code: string
+  fields.status: string
+  message: string
+
+POST /api/machine/transactions/{id}/pay (cancelled) -> 409 TRANSACTION_CLOSED
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/result (already recorded) -> 409 CONFLICT
+  code: string
+  current.customerReportedAt: number
+  current.failureReason: null
+  current.finishedAt: number
+  current.id: string
+  current.paidAt: number
+  current.status: string
+  message: string
+
+POST /api/machine/transactions (too large) -> 413 PAYLOAD_TOO_LARGE
+  code: string
+  message: string
+
+POST /api/machine/operator/login (locked) -> 423 LOCKED
+  code: string
+  message: string
+  retryInSeconds: number
+
+POST /api/machine/transactions/{id}/pay (expired) -> 410 EXPIRED
+  code: string
+  message: string
+
+POST /api/machine/transactions/{id}/report (window closed) -> 409 REPORT_WINDOW_CLOSED
+  code: string
+  message: string
+
+POST /api/admin/demo/reset -> 200
+  ok: bool
+
+GET /api/admin/me (after reset) -> 401 UNAUTHORIZED
+  code: string
+  message: string

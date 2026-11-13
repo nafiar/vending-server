@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{agentUrl}}/api/transactions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "{{txId}}",
+      "slotNumber": {{slotNumber}},
+      "catalogVersion": {{catalogVersion}}
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('txId', pm.variables.replaceIn('{{$guid}}'));
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+    language: text/javascript
+order: 4000

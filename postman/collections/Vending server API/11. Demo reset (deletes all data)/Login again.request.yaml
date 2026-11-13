@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{adminUsername}}",
+      "password": "{{adminPassword}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      pm.collectionVariables.set('adminToken', pm.response.json().token);
+    language: text/javascript
+order: 1000

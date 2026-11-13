@@ -1,0 +1,24 @@
+$kind: http-request
+description: imageUrl takes a JPG or PNG data URL up to 2 MB (here a 1 × 1 px PNG). Leave it out for the placeholder tile.
+url: "{{baseUrl}}/api/admin/products"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Gacha Postman {{$timestamp}}",
+      "description": "Produk uji dari Postman",
+      "price": 25000,
+      "imageUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+      const j = pm.response.json();
+      pm.collectionVariables.set('productId', j.id);
+      pm.test('product id saved', () => pm.expect(j.id).to.exist);
+    language: text/javascript
+order: 2000

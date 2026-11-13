@@ -1,0 +1,19 @@
+$kind: http-request
+description: Writes a change-log entry with the price before and after (TC-31).
+url: "{{baseUrl}}/api/admin/products/{{productId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Gacha Postman (diubah)",
+      "description": "Harga diubah dari Postman",
+      "price": 30000
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4000

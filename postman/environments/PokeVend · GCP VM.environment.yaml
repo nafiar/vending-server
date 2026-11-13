@@ -1,0 +1,16 @@
+name: PokeVend · GCP VM
+values:
+  - key: baseUrl
+    value: 'https://35.219.98.32'
+  - key: agentUrl
+    value: 'http://127.0.0.1:8080'
+  - key: adminUsername
+    value: admin
+  - key: adminPassword
+    value: admin123
+  - key: operatorUsername
+    value: budi
+  - key: operatorPassword
+    value: budi123
+  - key: machineKey
+    value: ''

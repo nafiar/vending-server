@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/transactions?from={{from30}}&to={{today}}&page=1&pageSize=25"
+method: GET
+queryParams:
+  from: "{{from30}}"
+  to: "{{today}}"
+  page: "1"
+  pageSize: "25"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.test('has rows and the DISPENSED total', () => {
+        pm.expect(j).to.have.property('rows');
+        pm.expect(j).to.have.property('dispensedRevenue');
+      });
+    language: text/javascript
+order: 1000

@@ -1,0 +1,707 @@
+{
+  "info": {
+    "_postman_id": "6724a99b-1745-543d-af6d-0b6a87b0a4fc",
+    "name": "Vending machine · Kiosk Agent API",
+    "description": "The local API that the Kiosk Agent (vending-machine) serves to the kiosk page. It is the same origin as the page: http://127.0.0.1:8080 on the machine, http://127.0.0.1:8090 on a Mac next to a local server. No key is needed here: the agent adds the machine key itself when it forwards a call to vending-server.\n\nThe agent listens on 127.0.0.1 only, so run this collection on the same computer as the agent. With board = serial, '1 · A2 Pay' turns a real coil; use board = sim while testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Agent · Health and catalog",
+      "item": [
+        {
+          "name": "Health (live server check)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{agentUrl}}/api/health",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "The agent sends a heartbeat to the server. 503 OFFLINE when the server can't be reached or the machine key is refused (the kiosk shows 'Mesin offline')."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agent status (developer page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{agentUrl}}/api/agent/status",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "agent",
+                "status"
+              ]
+            },
+            "description": "What the /dev/ page shows: server state, simulator mode, journal entries, last vends. Switch the simulator (OK, Jam, No echo, power cut) on the /dev/ page itself."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog (saves catalogVersion, a slot and an image)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{agentUrl}}/api/catalog",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog"
+              ]
+            },
+            "description": "Answered from the agent's cache: { catalogVersion, machine, slots: [{ slotNumber, available, product }] }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('catalogVersion', j.catalogVersion);",
+                  "const avail = s => s.available === true ? 1 : (Number(s.available) || 0);",
+                  "const slots = (j.slots || []).filter(s => s.product && avail(s) > 0).sort((a, b) => avail(b) - avail(a));",
+                  "pm.test('a slot to buy from', () => pm.expect(slots.length).to.be.above(0));",
+                  "if (slots.length) {",
+                  "  pm.collectionVariables.set('slotNumber', slots[0].slotNumber);",
+                  "  pm.collectionVariables.set('imageUrl', slots[0].product.imageUrl || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Product image (from the agent's cache)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{agentUrl}}{{imageUrl}}",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "{{imageUrl}}"
+              ]
+            },
+            "description": "imageUrl is relative (/uploads/...); the agent serves its disk copy or fetches it from the server."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('imageUrl')) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Agent · Purchase",
+      "item": [
+        {
+          "name": "A1 · Create transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{txId}}\",\n  \"slotNumber\": {{slotNumber}},\n  \"catalogVersion\": {{catalogVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Answer: { id, slotNumber, product, amount, expiresInSeconds }. CATALOG_STALE 409 (with the fresh catalog) or SOLD_OUT 409."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('txId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A2 · Pay (turns the coil, then answers)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions/{{txId}}/pay",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "{{txId}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Pay → vend → result in one call: the agent asks the server for PAID, turns the coil (or the simulator, about 2.5 s), reports the result and answers { id, status: DISPENSED | FAILED, failureReason }. On the real board this can take up to about 6 s. EXPIRED 410 after 60 s. This request turns a real coil when board = serial."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('final status', () => pm.expect(j.status).to.be.oneOf(['DISPENSED', 'FAILED']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A3 · Report 'Produk tidak keluar?'",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions/{{txId}}/report",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "{{txId}}",
+                "report"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Within 60 s of the sale. Answer: { id, reported: true }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B1 · Create a second transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{txId}}\",\n  \"slotNumber\": {{slotNumber}},\n  \"catalogVersion\": {{catalogVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('txId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B2 · Cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions/{{txId}}/cancel",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "{{txId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"CANCEL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "reason CANCEL → CANCELLED (the back button); TIMEOUT → EXPIRED (the 60 s countdown)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create with an old catalog version (expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/transactions",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{staleTxId}}\",\n  \"slotNumber\": {{slotNumber}},\n  \"catalogVersion\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The kiosk shows 'Info produk diperbarui'; the agent keeps the fresh catalog from this answer."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('staleTxId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error code CATALOG_STALE', () => pm.expect(pm.response.json().code).to.eql('CATALOG_STALE'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Agent · Operator restock",
+      "item": [
+        {
+          "name": "Operator login (saves operatorToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/operator/login",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "operator",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{operatorUsername}}\",\n  \"password\": \"{{operatorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "INVALID_LOGIN 401 with attemptsLeft; LOCKED 423 with retryInSeconds after 5 wrong tries."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('operatorToken', j.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restock screen data (saves restockItems)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{operatorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/operator/slots",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "operator",
+                "slots"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const items = (j.slots || []).map(s => ({",
+                  "  slotNumber: s.slotNumber,",
+                  "  qtyBefore: s.qty,",
+                  "  qtyAfter: (s.product || s.nextProduct) ? s.capacity : s.qty",
+                  "}));",
+                  "pm.collectionVariables.set('restockItems', JSON.stringify(items));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Save the restock visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{operatorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/restock-sessions",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "restock-sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{restockId}}\",\n  \"startedAt\": 0,\n  \"finishedAt\": 0,\n  \"items\": [\n    {\n      \"slotNumber\": 1,\n      \"qtyBefore\": 5,\n      \"qtyAfter\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The body is rebuilt from the previous request (the same shape the kiosk page sends). The agent sends pending sale results first, forwards the visit, then reloads its catalog. Answer: { id, savedAt, catalogVersion }."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now();",
+                  "pm.collectionVariables.set('restockId', pm.variables.replaceIn('{{$guid}}'));",
+                  "const items = JSON.parse(pm.collectionVariables.get('restockItems') || '[]');",
+                  "pm.request.body.raw = JSON.stringify({",
+                  "  id: pm.collectionVariables.get('restockId'),",
+                  "  startedAt: now - 60000,",
+                  "  finishedAt: now,",
+                  "  items: items",
+                  "}, null, 2);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Operator logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{operatorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{agentUrl}}/api/operator/logout",
+              "host": [
+                "{{agentUrl}}"
+              ],
+              "path": [
+                "api",
+                "operator",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "agentUrl",
+      "value": "http://127.0.0.1:8090",
+      "type": "string"
+    },
+    {
+      "key": "operatorUsername",
+      "value": "budi",
+      "type": "string"
+    },
+    {
+      "key": "operatorPassword",
+      "value": "budi123",
+      "type": "string"
+    },
+    {
+      "key": "operatorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "catalogVersion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "slotNumber",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "imageUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "txId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staleTxId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restockId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restockItems",
+      "value": "[]",
+      "type": "string"
+    }
+  ]
+}

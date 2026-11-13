@@ -1,0 +1,16 @@
+name: PokeVend · Local (Mac)
+values:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+  - key: agentUrl
+    value: 'http://127.0.0.1:8090'
+  - key: adminUsername
+    value: admin
+  - key: adminPassword
+    value: admin123
+  - key: operatorUsername
+    value: budi
+  - key: operatorPassword
+    value: budi123
+  - key: machineKey
+    value: ''

@@ -1,0 +1,25 @@
+$kind: http-request
+description: "TC-10: refused with the fresh catalog; nothing is charged."
+url: "{{baseUrl}}/api/machine/transactions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "{{staleTxId}}",
+      "slotNumber": {{slotNumber}},
+      "catalogVersion": 0
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('staleTxId', pm.variables.replaceIn('{{$guid}}'));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('status 409', () => pm.response.to.have.status(409));
+      pm.test('error code CATALOG_STALE', () => pm.expect(pm.response.json().code).to.eql('CATALOG_STALE'));
+      pm.test('fresh catalog included', () => pm.expect(pm.response.json()).to.have.property('catalog'));
+    language: text/javascript
+order: 11000

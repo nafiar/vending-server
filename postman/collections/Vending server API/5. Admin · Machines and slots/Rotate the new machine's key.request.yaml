@@ -1,0 +1,12 @@
+$kind: http-request
+description: Returns a new key once; the old one stops working.
+url: "{{baseUrl}}/api/admin/machines/{{machineId}}/rotate-key"
+method: POST
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      if (j.apiKey) pm.collectionVariables.set('newMachineKey', j.apiKey);
+    language: text/javascript
+order: 8000

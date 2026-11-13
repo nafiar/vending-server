@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{agentUrl}}/api/operator/logout"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{operatorToken}}
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4000

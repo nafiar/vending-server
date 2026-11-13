@@ -1,0 +1,57 @@
+// Package session reads and writes the signed-in sessions. The port is here;
+// the drivers live in subpackages.
+//
+// A session is identified by the hash of its token, never by the token: the
+// caller hashes what it was sent and looks that up, so what is stored cannot be
+// replayed as a token if the table is ever read by someone who should not.
+package session
+
+import (
+	"context"
+	"time"
+
+	"vending/internal/model"
+)
+
+//go:generate mockgen -source=session.go -destination=mock/session_mock.go -package=mock
+
+// Repository is the sessions table as the rules see it.
+type Repository interface {
+	// Create stores a new session.
+	Create(ctx context.Context, s model.Session) error
+
+	// ByTokenHash returns the session with this token hash and kind, together
+	// with who it belongs to and whether that account is still active, or an
+	// error wrapping model.ErrNoRecord.
+	//
+	// The kind is part of the lookup rather than something the caller checks
+	// afterwards, so an operator token can never be presented as an admin one.
+	ByTokenHash(ctx context.Context, kind, tokenHash string) (model.AuthSession, error)
+
+	// TouchSeen records that the session was just used, which is what the idle
+	// timeout is measured from (BR-13).
+	TouchSeen(ctx context.Context, id int64, at time.Time) error
+
+	// Delete ends one session by id.
+	Delete(ctx context.Context, id int64) error
+
+	// DeleteByTokenHash ends the session with this token hash. A token that is
+	// not there is not an error: signing out twice is not a failure.
+	DeleteByTokenHash(ctx context.Context, tokenHash string) error
+
+	// DeleteByMachine ends every operator session on one machine, for when the
+	// machine is deactivated: whoever is signed in on its kiosk should not keep
+	// restocking a machine that is meant to be out of service.
+	DeleteByMachine(ctx context.Context, machineID int64) error
+
+	// DeleteIdle ends every session that has gone past its idle timeout, and
+	// returns how many. The two instants are the cutoffs for the two kinds,
+	// because an admin and an operator are given very different patience
+	// (BR-13), and the caller works out both from one clock reading.
+	DeleteIdle(ctx context.Context, adminBefore, operatorBefore time.Time) (int64, error)
+
+	// DeleteByUser ends every session of one account, for when it is
+	// deactivated or its password is reset. Both mean the person holding the
+	// old token should stop being trusted at once, not whenever it goes idle.
+	DeleteByUser(ctx context.Context, userID int64) error
+}

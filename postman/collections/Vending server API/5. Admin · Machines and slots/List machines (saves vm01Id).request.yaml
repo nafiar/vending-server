@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/machines"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      const rows = Array.isArray(j) ? j : (j.rows || j.items || j.machines || j.products || []);
+      const vm01 = rows.find(m => m.code === 'VM-01') || rows[0];
+      if (vm01) pm.collectionVariables.set('vm01Id', vm01.id);
+    language: text/javascript
+order: 1000

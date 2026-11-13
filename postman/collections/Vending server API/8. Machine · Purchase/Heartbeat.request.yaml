@@ -1,0 +1,9 @@
+$kind: http-request
+description: Updates the machine's last contact (FR-28) and returns the catalog version.
+url: "{{baseUrl}}/api/machine/heartbeat"
+method: POST
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 2000

@@ -1,0 +1,22 @@
+$kind: http-request
+description: The session is bound to this machine and ends after 2 minutes idle (BR-13).
+url: "{{baseUrl}}/api/machine/operator/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{operatorUsername}}",
+      "password": "{{operatorPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.collectionVariables.set('operatorToken', j.token);
+      pm.test('token saved', () => pm.expect(j.token).to.be.a('string').and.not.empty);
+    language: text/javascript
+order: 2000
