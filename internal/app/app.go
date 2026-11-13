@@ -1,10 +1,14 @@
 // Package app builds the dependency graph: the shared infrastructure, the
 // repositories over it, and the usecases over those.
 //
-// This is the composition root. It is the only place in the system that names a
-// concrete driver (mysql, local); everything below receives its dependencies as
-// interfaces, which is what lets a test pass a mock instead
+// This is the composition root. It is the only package above the repository
+// layer that names a concrete driver (mysql, local); everything below receives
+// its dependencies as interfaces, which is what lets a test pass a mock instead
 // (docs/ARCHITECTURE.md §7).
+//
+// The one other place a driver names a driver is repository/uow/mysql, which
+// binds the per-table mysql repositories to one *sql.Tx: a driver composing
+// drivers of its own technology, not a rule reaching for one.
 //
 // It is a package rather than a file in cmd so that the end-to-end tests wire
 // the system exactly as the binary does. Wiring a test differently from
