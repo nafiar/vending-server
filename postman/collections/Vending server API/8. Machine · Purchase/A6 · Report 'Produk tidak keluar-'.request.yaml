@@ -1,0 +1,10 @@
+$kind: http-request
+name: A6 · Report 'Produk tidak keluar?'
+description: Within 60 s of the sale (TC-12); later gives REPORT_WINDOW_CLOSED.
+url: "{{baseUrl}}/api/machine/transactions/{{txId}}/report"
+method: POST
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 8000

@@ -1,0 +1,17 @@
+$kind: collection
+description: |-
+  The local API that the Kiosk Agent (vending-machine) serves to the kiosk page. It is the same origin as the page: http://127.0.0.1:8080 on the machine, http://127.0.0.1:8090 on a Mac next to a local server. No key is needed here: the agent adds the machine key itself when it forwards a call to vending-server.
+
+  The agent listens on 127.0.0.1 only, so run this collection on the same computer as the agent. With board = serial, '1 · A2 Pay' turns a real coil; use board = sim while testing.
+variables:
+  agentUrl: http://127.0.0.1:8090
+  operatorUsername: budi
+  operatorPassword: budi123
+  operatorToken: ""
+  catalogVersion: ""
+  slotNumber: ""
+  imageUrl: ""
+  txId: ""
+  staleTxId: ""
+  restockId: ""
+  restockItems: "[]"

@@ -1,0 +1,11 @@
+$kind: collection
+description: Calls as the Kiosk Agent makes them, with the X-Machine-Key of an active machine. Use VM-02's key on a laptop and keep VM-01's for the real machine.
+auth:
+  - id: e25af1aa-4ec1-4639-b7fb-e4847e92ee16
+    type: apikey
+    name: apikey auth
+    credentials:
+      key: X-Machine-Key
+      value: "{{machineKey}}"
+      in: header
+order: 9000

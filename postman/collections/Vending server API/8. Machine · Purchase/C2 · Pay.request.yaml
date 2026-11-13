@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/machine/transactions/{{txId}}/pay"
+method: POST
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 13000

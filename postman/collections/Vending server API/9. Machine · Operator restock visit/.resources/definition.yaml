@@ -1,0 +1,10 @@
+$kind: collection
+auth:
+  - id: 89bd6900-0c71-445b-8e23-f4a23d2072c2
+    type: apikey
+    name: apikey auth
+    credentials:
+      key: X-Machine-Key
+      value: "{{machineKey}}"
+      in: header
+order: 10000

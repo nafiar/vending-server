@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/transactions?from={{from30}}&to={{today}}&all=1"
+method: GET
+queryParams:
+  from: "{{from30}}"
+  to: "{{today}}"
+  all: "1"
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 3000

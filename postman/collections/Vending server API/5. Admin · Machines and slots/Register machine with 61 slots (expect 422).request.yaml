@@ -1,0 +1,23 @@
+$kind: http-request
+description: "TC-28: slot count must be 1–60."
+url: "{{baseUrl}}/api/admin/machines"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "VM-BAD",
+      "name": "Tidak valid",
+      "location": "-",
+      "slotCount": 61,
+      "capacity": 10
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 422', () => pm.response.to.have.status(422));
+      pm.test('error code VALIDATION', () => pm.expect(pm.response.json().code).to.eql('VALIDATION'));
+    language: text/javascript
+order: 4000

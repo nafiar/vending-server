@@ -1,0 +1,29 @@
+$kind: http-request
+description: "TC-26: slots 1..8 are created empty; the key is shown only in this answer."
+url: "{{baseUrl}}/api/admin/machines"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "code": "{{newMachineCode}}",
+      "name": "Mesin uji Postman",
+      "location": "Ruang uji",
+      "slotCount": 8,
+      "capacity": 10
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('newMachineCode', 'VM-PM' + Math.floor(Math.random() * 9000 + 1000));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+      const j = pm.response.json();
+      pm.collectionVariables.set('machineId', j.machine.id);
+      pm.collectionVariables.set('newMachineKey', j.apiKey);
+      pm.test('key returned once', () => pm.expect(j.apiKey).to.be.a('string').and.not.empty);
+    language: text/javascript
+order: 3000

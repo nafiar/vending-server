@@ -1,0 +1,17 @@
+$kind: http-request
+description: reason CANCEL → CANCELLED (the back button); TIMEOUT → EXPIRED (the 60 s countdown).
+url: "{{agentUrl}}/api/transactions/{{txId}}/cancel"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "reason": "CANCEL"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 5000

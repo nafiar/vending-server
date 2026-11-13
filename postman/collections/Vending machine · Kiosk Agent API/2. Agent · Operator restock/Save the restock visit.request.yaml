@@ -1,0 +1,39 @@
+$kind: http-request
+description: "The body is rebuilt from the previous request (the same shape the kiosk page sends). The agent sends pending sale results first, forwards the visit, then reloads its catalog. Answer: { id, savedAt, catalogVersion }."
+url: "{{agentUrl}}/api/restock-sessions"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{operatorToken}}
+body:
+  type: json
+  content: |-
+    {
+      "id": "{{restockId}}",
+      "startedAt": 0,
+      "finishedAt": 0,
+      "items": [
+        {
+          "slotNumber": 1,
+          "qtyBefore": 5,
+          "qtyAfter": 10
+        }
+      ]
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const now = Date.now();
+      pm.collectionVariables.set('restockId', pm.variables.replaceIn('{{$guid}}'));
+      const items = JSON.parse(pm.collectionVariables.get('restockItems') || '[]');
+      pm.request.body.raw = JSON.stringify({
+        id: pm.collectionVariables.get('restockId'),
+        startedAt: now - 60000,
+        finishedAt: now,
+        items: items
+      }, null, 2);
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('status 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));
+    language: text/javascript
+order: 3000

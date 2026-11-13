@@ -1,0 +1,21 @@
+$kind: http-request
+description: INVALID_LOGIN 401 with attemptsLeft; LOCKED 423 with retryInSeconds after 5 wrong tries.
+url: "{{agentUrl}}/api/operator/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{operatorUsername}}",
+      "password": "{{operatorPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.collectionVariables.set('operatorToken', j.token);
+    language: text/javascript
+order: 1000

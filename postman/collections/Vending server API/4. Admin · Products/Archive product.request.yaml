@@ -1,0 +1,9 @@
+$kind: http-request
+description: "Allowed: the new product is in no slot."
+url: "{{baseUrl}}/api/admin/products/{{productId}}/archive"
+method: POST
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 5000

@@ -1,0 +1,17 @@
+$kind: http-request
+description: "Pay → vend → result in one call: the agent asks the server for PAID, turns the coil (or the simulator, about 2.5 s), reports the result and answers { id, status: DISPENSED | FAILED, failureReason }. On the real board this can take up to about 6 s. EXPIRED 410 after 60 s. This request turns a real coil when board = serial."
+url: "{{agentUrl}}/api/transactions/{{txId}}/pay"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.test('final status', () => pm.expect(j.status).to.be.oneOf(['DISPENSED', 'FAILED']));
+    language: text/javascript
+order: 2000

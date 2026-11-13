@@ -1,0 +1,9 @@
+$kind: collection
+description: Run this folder on its own, only when you want a clean demo.
+auth:
+  - id: 859632e9-30ff-47f8-b9f6-f540a4e80872
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{adminToken}}"
+order: 12000

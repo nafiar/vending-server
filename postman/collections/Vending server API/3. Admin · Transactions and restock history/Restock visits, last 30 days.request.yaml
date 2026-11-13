@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/restock-sessions?from={{from30}}&to={{today}}&page=1&pageSize=25"
+method: GET
+queryParams:
+  from: "{{from30}}"
+  to: "{{today}}"
+  page: "1"
+  pageSize: "25"
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 4000

@@ -1,0 +1,43 @@
+$kind: collection
+description: |-
+  PokeVend vending-server: the admin API (/api/admin, Bearer token) and the machine API (/api/machine, X-Machine-Key).
+
+  Run the folders in order with the Collection Runner: each request saves what the next one needs (tokens, ids, the catalog version). Before the first run, set `machineKey` to an active machine's key (`./deploy/deploy.sh USER@IP keys`, or the seed-demo output). Folder 11 deletes all data; run it only on purpose.
+
+  Errors are a non-2xx status with {code, message, fields?}. Times in answers are Unix milliseconds (UTC); dates in queries are YYYY-MM-DD in WIB.
+variables:
+  baseUrl: https://35.219.98.32
+  adminUsername: admin
+  adminPassword: admin123
+  operatorUsername: budi
+  operatorPassword: budi123
+  machineKey: ""
+  adminToken: ""
+  operatorToken: ""
+  vm01Id: ""
+  productId: ""
+  inUseProductId: ""
+  machineId: ""
+  newMachineCode: ""
+  newMachineKey: ""
+  newOperatorUsername: ""
+  operatorId: ""
+  catalogVersion: ""
+  slotNumber: ""
+  txId: ""
+  staleTxId: ""
+  restockId: ""
+  restockItems: "[]"
+  today: ""
+  from30: ""
+  from90: ""
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Dates for the admin filters, in WIB (UTC+7), YYYY-MM-DD.
+      const wib = new Date(Date.now() + 7 * 3600 * 1000);
+      const day = d => d.toISOString().slice(0, 10);
+      pm.collectionVariables.set('today', day(wib));
+      pm.collectionVariables.set('from30', day(new Date(wib.getTime() - 29 * 86400000)));
+      pm.collectionVariables.set('from90', day(new Date(wib.getTime() - 89 * 86400000)));
+    language: text/javascript

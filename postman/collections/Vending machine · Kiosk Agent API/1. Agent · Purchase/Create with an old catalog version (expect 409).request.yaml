@@ -1,0 +1,24 @@
+$kind: http-request
+description: The kiosk shows 'Info produk diperbarui'; the agent keeps the fresh catalog from this answer.
+url: "{{agentUrl}}/api/transactions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "{{staleTxId}}",
+      "slotNumber": {{slotNumber}},
+      "catalogVersion": 0
+    }
+scripts:
+  - type: beforeRequest
+    code: pm.collectionVariables.set('staleTxId', pm.variables.replaceIn('{{$guid}}'));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('status 409', () => pm.response.to.have.status(409));
+      pm.test('error code CATALOG_STALE', () => pm.expect(pm.response.json().code).to.eql('CATALOG_STALE'));
+    language: text/javascript
+order: 6000

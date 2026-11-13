@@ -1,0 +1,9 @@
+$kind: http-request
+description: The agent sends a heartbeat to the server. 503 OFFLINE when the server can't be reached or the machine key is refused (the kiosk shows 'Mesin offline').
+url: "{{agentUrl}}/api/health"
+method: GET
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 1000

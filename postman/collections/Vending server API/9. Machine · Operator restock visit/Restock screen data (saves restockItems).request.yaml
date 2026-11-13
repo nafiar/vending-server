@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/machine/operator/slots"
+method: GET
+headers:
+  Authorization: Bearer {{operatorToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      // Fill every slot that has (or is about to get) a product up to its capacity.
+      const items = (j.slots || []).map(s => ({
+        slotNumber: s.slotNumber,
+        qtyAfter: (s.product || s.nextProduct) ? s.capacity : s.qty
+      }));
+      pm.collectionVariables.set('restockItems', JSON.stringify(items));
+    language: text/javascript
+order: 3000

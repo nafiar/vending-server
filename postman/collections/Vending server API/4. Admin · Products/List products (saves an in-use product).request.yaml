@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/products"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      const rows = Array.isArray(j) ? j : (j.rows || j.items || j.machines || j.products || []);
+      const used = rows.find(p => (p.usedIn || []).length > 0);
+      pm.collectionVariables.set('inUseProductId', used ? used.id : '');
+    language: text/javascript
+order: 1000

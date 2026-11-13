@@ -1,0 +1,19 @@
+$kind: http-request
+description: "Answered from the agent's cache: { catalogVersion, machine, slots: [{ slotNumber, available, product }] }."
+url: "{{agentUrl}}/api/catalog"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status 200', () => pm.response.to.have.status(200));
+      const j = pm.response.json();
+      pm.collectionVariables.set('catalogVersion', j.catalogVersion);
+      const avail = s => s.available === true ? 1 : (Number(s.available) || 0);
+      const slots = (j.slots || []).filter(s => s.product && avail(s) > 0).sort((a, b) => avail(b) - avail(a));
+      pm.test('a slot to buy from', () => pm.expect(slots.length).to.be.above(0));
+      if (slots.length) {
+        pm.collectionVariables.set('slotNumber', slots[0].slotNumber);
+        pm.collectionVariables.set('imageUrl', slots[0].product.imageUrl || '');
+      }
+    language: text/javascript
+order: 3000

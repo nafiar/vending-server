@@ -1,0 +1,11 @@
+$kind: http-request
+description: Server and database up. No login needed.
+url: "{{baseUrl}}/api/health"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 1000
